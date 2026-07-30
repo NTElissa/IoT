@@ -32,13 +32,15 @@ const ReportsPage = () => {
 
   useEffect(() => {
     const calls = [reportService.getComplications().then(setComplications)];
-    if (user.role === 'admin') {
+    if (['admin', 'doctor', 'nurse'].includes(user.role)) {
       calls.push(
         reportService.getResponseTimes().then(setResponseTimes),
-        reportService.getWorkload().then(setWorkload),
         reportService.getTaskCompletion().then(setTaskCompletion),
         reportService.getIVUsage().then(setIvUsage)
       );
+    }
+    if (user.role === 'admin') {
+      calls.push(reportService.getWorkload().then(setWorkload));
     }
     Promise.all(calls)
       .catch((err) => setError(err.message))
@@ -55,6 +57,11 @@ const ReportsPage = () => {
 
   return (
     <AppLayout title="Reports">
+      {user.role !== 'admin' && (
+        <p className="mb-4 text-sm text-ink/50">
+          Scoped to your own patients, rooms, and delegated tasks.
+        </p>
+      )}
       {error && <ErrorState message={error} />}
 
       {responseTimes && (

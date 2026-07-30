@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import * as authService from '../services/authService.js';
+import * as webauthnService from '../services/webauthnService.js';
+import * as twoFactorService from '../services/twoFactorService.js';
 
 const AuthContext = createContext(null);
 
@@ -30,20 +32,50 @@ export const AuthProvider = ({ children }) => {
       .finally(() => setLoading(false));
   }, []);
 
-  const login = useCallback(async (email, password) => {
-    const { user: loggedInUser, token } = await authService.login(email, password);
-    localStorage.setItem('iv_token', token);
-    localStorage.setItem('iv_user', JSON.stringify(loggedInUser));
-    setUser(loggedInUser);
-    return loggedInUser;
+  const applyAuthResult = useCallback((result) => {
+    // Accounts with 2FA enabled get a pending token instead of a full one -
+    // the caller (LoginPage) is responsible for prompting for the code and
+    // calling completeTwoFactor with it.
+    if (result.requiresTwoFactor) return result;
+    localStorage.setItem('iv_token', result.token);
+    localStorage.setItem('iv_user', JSON.stringify(result.user));
+    setUser(result.user);
+    return result.user;
   }, []);
 
-  const registerFirstAdmin = useCallback(async (payload) => {
-    const { user: newUser, token } = await authService.registerFirstAdmin(payload);
+  const login = useCallback(
+    async (email, password) => applyAuthResult(await authService.login(email, password)),
+    [applyAuthResult]
+  );
+
+  const loginWithGoogle = useCallback(
+    async (idToken) => applyAuthResult(await authService.loginWithGoogle(idToken)),
+    [applyAuthResult]
+  );
+
+  const loginWithPasskey = useCallback(
+    async (email) => applyAuthResult(await webauthnService.loginWithPasskey(email)),
+    [applyAuthResult]
+  );
+
+  const completeTwoFactor = useCallback(
+    async (tempToken, code) => applyAuthResult(await twoFactorService.verifyLoginTwoFactor(tempToken, code)),
+    [applyAuthResult]
+  );
+
+  const registerSuperAdmin = useCallback(async (payload) => {
+    const { user: newUser, token } = await authService.registerSuperAdmin(payload);
     localStorage.setItem('iv_token', token);
     localStorage.setItem('iv_user', JSON.stringify(newUser));
     setUser(newUser);
     return newUser;
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    const { user: fresh } = await authService.getMe();
+    setUser(fresh);
+    localStorage.setItem('iv_user', JSON.stringify(fresh));
+    return fresh;
   }, []);
 
   const logout = useCallback(() => {
@@ -53,7 +85,19 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, registerFirstAdmin }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        loginWithGoogle,
+        loginWithPasskey,
+        completeTwoFactor,
+        registerSuperAdmin,
+        refreshUser,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

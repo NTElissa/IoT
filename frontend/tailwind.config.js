@@ -1,10 +1,19 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
       colors: {
-        ink: '#0B2027',
+        // These four tokens are defined as CSS variables (see index.css)
+        // so the entire app - every existing `bg-mist`, `text-ink`,
+        // `text-ink/50`, `bg-surface`, `border-border/10`, etc. - picks up
+        // dark mode automatically the moment `.dark` is applied to <html>,
+        // with zero per-page changes needed.
+        ink: 'rgb(var(--color-ink) / <alpha-value>)',
+        mist: 'rgb(var(--color-mist) / <alpha-value>)',
+        surface: 'rgb(var(--color-surface) / <alpha-value>)',
+        border: 'rgb(var(--color-border) / <alpha-value>)',
         teal: {
           DEFAULT: '#0F5C5C',
           50: '#E6F0EF',
@@ -25,7 +34,6 @@ export default {
           400: '#EDB35C',
           500: '#E8A33D',
         },
-        mist: '#F7F9F9',
         good: '#2F9E44',
         warn: '#E8A33D',
         crit: '#D64545',

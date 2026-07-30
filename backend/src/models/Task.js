@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 
 const taskSchema = new mongoose.Schema(
   {
+    hospital: { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital', required: true },
     ivFluid: { type: mongoose.Schema.Types.ObjectId, ref: 'IVFluid' },
     room: { type: mongoose.Schema.Types.ObjectId, ref: 'Room' },
     patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient' },

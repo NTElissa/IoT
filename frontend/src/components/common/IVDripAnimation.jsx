@@ -51,7 +51,7 @@ const IVDripAnimation = () => {
         {/* line to patient */}
         <line x1="110" y1="230" x2="110" y2="300" stroke="#0B2027" strokeOpacity="0.2" strokeWidth="3" strokeDasharray="2 5" />
       </svg>
-      <div className="mt-2 flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-medium shadow-card">
+      <div className="mt-2 flex items-center gap-2 rounded-full bg-surface px-3 py-1.5 text-xs font-medium shadow-card">
         <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: color }} />
         Room R104 · Bed A · live sensor reading
       </div>

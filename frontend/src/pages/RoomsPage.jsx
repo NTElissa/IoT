@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, BedDouble, Settings2 } from 'lucide-react';
 import AppLayout from '../components/common/AppLayout.jsx';
 import Modal from '../components/common/Modal.jsx';
+import SearchInput from '../components/common/SearchInput.jsx';
 import { Card, EmptyState, ErrorState, Spinner } from '../components/common/ui.jsx';
 import * as roomService from '../services/roomService.js';
 import * as userService from '../services/userService.js';
@@ -10,8 +11,10 @@ const RoomsPage = () => {
   const [rooms, setRooms] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [nurses, setNurses] = useState([]);
+  const [staffMembers, setStaffMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState({ roomNumber: '', ward: '', bedCount: 2 });
@@ -19,7 +22,7 @@ const RoomsPage = () => {
   const [formError, setFormError] = useState('');
 
   const [assignRoom, setAssignRoom] = useState(null);
-  const [assignForm, setAssignForm] = useState({ doctorIds: [], nurseIds: [] });
+  const [assignForm, setAssignForm] = useState({ doctorIds: [], nurseIds: [], staffIds: [] });
 
   const load = () => {
     setLoading(true);
@@ -34,7 +37,18 @@ const RoomsPage = () => {
     load();
     userService.getUsers({ role: 'doctor' }).then(setDoctors).catch(() => {});
     userService.getUsers({ role: 'nurse' }).then(setNurses).catch(() => {});
+    userService.getUsers({ role: 'staff' }).then(setStaffMembers).catch(() => {});
   }, []);
+
+  const filteredRooms = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rooms;
+    return rooms.filter((r) =>
+      [r.roomNumber, r.ward, ...r.assignedDoctors.map((d) => d.name), ...r.assignedNurses.map((n) => n.name)]
+        .filter(Boolean)
+        .some((field) => field.toLowerCase().includes(q))
+    );
+  }, [rooms, search]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -57,6 +71,7 @@ const RoomsPage = () => {
     setAssignForm({
       doctorIds: room.assignedDoctors.map((d) => d._id),
       nurseIds: room.assignedNurses.map((n) => n._id),
+      staffIds: (room.assignedStaff || []).map((s) => s._id),
     });
   };
 
@@ -78,14 +93,18 @@ const RoomsPage = () => {
 
   return (
     <AppLayout title="Rooms">
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-sm text-ink/50">Create rooms and assign the doctors and nurses who can manage them.</p>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-ink/50">Create rooms and assign the doctors, nurses, and staff who manage them.</p>
         <button
           onClick={() => setCreateOpen(true)}
           className="flex items-center gap-1.5 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700"
         >
           <Plus size={16} /> Add room
         </button>
+      </div>
+
+      <div className="mb-4 max-w-sm">
+        <SearchInput value={search} onChange={setSearch} placeholder="Search by room, ward, doctor, nurse…" />
       </div>
 
       {loading && <Spinner />}
@@ -95,9 +114,13 @@ const RoomsPage = () => {
         <EmptyState icon={BedDouble} title="No rooms yet" description="Add your first room to start assigning patients and staff." />
       )}
 
-      {!loading && rooms.length > 0 && (
+      {!loading && rooms.length > 0 && !filteredRooms.length && (
+        <EmptyState icon={BedDouble} title="No matches" description="Try a different search term." />
+      )}
+
+      {!loading && filteredRooms.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {rooms.map((room) => (
+          {filteredRooms.map((room) => (
             <Card key={room._id}>
               <div className="flex items-start justify-between">
                 <div>
@@ -121,10 +144,14 @@ const RoomsPage = () => {
                   <span className="font-medium text-ink/40">Nurses: </span>
                   {room.assignedNurses.map((n) => n.name).join(', ') || 'None assigned'}
                 </p>
+                <p>
+                  <span className="font-medium text-ink/40">Staff: </span>
+                  {(room.assignedStaff || []).map((s) => s.name).join(', ') || 'None assigned'}
+                </p>
               </div>
               <button
                 onClick={() => openAssign(room)}
-                className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-lg border border-black/10 px-3 py-2 text-xs font-medium text-ink/70 hover:bg-mist"
+                className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-lg border border-border/10 px-3 py-2 text-xs font-medium text-ink/70 hover:bg-mist"
               >
                 <Settings2 size={14} /> Assign staff
               </button>
@@ -141,7 +168,7 @@ const RoomsPage = () => {
               required
               value={createForm.roomNumber}
               onChange={(e) => setCreateForm({ ...createForm, roomNumber: e.target.value })}
-              className="w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
+              className="w-full rounded-lg border border-border/10 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
               placeholder="R101"
             />
           </div>
@@ -151,7 +178,7 @@ const RoomsPage = () => {
               required
               value={createForm.ward}
               onChange={(e) => setCreateForm({ ...createForm, ward: e.target.value })}
-              className="w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
+              className="w-full rounded-lg border border-border/10 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
               placeholder="Medical"
             />
           </div>
@@ -162,7 +189,7 @@ const RoomsPage = () => {
               min={1}
               value={createForm.bedCount}
               onChange={(e) => setCreateForm({ ...createForm, bedCount: Number(e.target.value) })}
-              className="w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
+              className="w-full rounded-lg border border-border/10 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
             />
           </div>
           {formError && <p className="rounded-lg bg-crit/5 px-3 py-2 text-sm text-crit">{formError}</p>}
@@ -187,7 +214,7 @@ const RoomsPage = () => {
                   className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-medium ${
                     assignForm.doctorIds.includes(d._id)
                       ? 'border-teal-500 bg-teal-50 text-teal-700'
-                      : 'border-black/10 text-ink/60'
+                      : 'border-border/10 text-ink/60'
                   }`}
                 >
                   <input
@@ -212,7 +239,7 @@ const RoomsPage = () => {
                   className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-medium ${
                     assignForm.nurseIds.includes(n._id)
                       ? 'border-teal-500 bg-teal-50 text-teal-700'
-                      : 'border-black/10 text-ink/60'
+                      : 'border-border/10 text-ink/60'
                   }`}
                 >
                   <input
@@ -222,6 +249,29 @@ const RoomsPage = () => {
                     onChange={() => setAssignForm({ ...assignForm, nurseIds: toggleId(assignForm.nurseIds, n._id) })}
                   />
                   {n.name}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="mb-2 text-sm font-medium text-ink/70">Staff members</p>
+            <div className="flex flex-wrap gap-2">
+              {staffMembers.map((s) => (
+                <label
+                  key={s._id}
+                  className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-medium ${
+                    assignForm.staffIds.includes(s._id)
+                      ? 'border-teal-500 bg-teal-50 text-teal-700'
+                      : 'border-border/10 text-ink/60'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    className="hidden"
+                    checked={assignForm.staffIds.includes(s._id)}
+                    onChange={() => setAssignForm({ ...assignForm, staffIds: toggleId(assignForm.staffIds, s._id) })}
+                  />
+                  {s.name}
                 </label>
               ))}
             </div>

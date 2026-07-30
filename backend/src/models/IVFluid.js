@@ -14,8 +14,14 @@ const alertSubSchema = new mongoose.Schema(
   { _id: true }
 );
 
+// Statuses that mean "this bag is still the patient's current line" -
+// used everywhere we need to know whether a patient already has a running
+// IV fluid (concurrency checks, replacement warnings, simulation ticks).
+export const OPEN_STATUSES = ['active', 'inactive', 'alert_low', 'alert_high'];
+
 const ivFluidSchema = new mongoose.Schema(
   {
+    hospital: { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital', required: true },
     fluidType: {
       type: String,
       enum: ['Normal Saline', '5% Dextrose', "Ringer's Lactate", 'Other'],
@@ -29,9 +35,12 @@ const ivFluidSchema = new mongoose.Schema(
     fluidLevel: { type: Number, required: true, default: 100 }, // percent, derived
     status: {
       type: String,
-      enum: ['active', 'completed', 'alert_low', 'alert_high', 'removed'],
+      enum: ['active', 'inactive', 'completed', 'alert_low', 'alert_high', 'removed'],
       default: 'active',
     },
+    // Set when a doctor/nurse pauses monitoring (status becomes 'inactive');
+    // preserved so monitoring can resume from the same weight/flow rate.
+    pausedAt: { type: Date },
     room: { type: mongoose.Schema.Types.ObjectId, ref: 'Room', required: true },
     patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
     startedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

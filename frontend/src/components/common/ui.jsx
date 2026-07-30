@@ -2,11 +2,11 @@ import React from 'react';
 import { Inbox, AlertTriangle } from 'lucide-react';
 
 export const Card = ({ children, className = '' }) => (
-  <div className={`rounded-2xl border border-black/5 bg-white p-5 shadow-card ${className}`}>{children}</div>
+  <div className={`rounded-2xl border border-border/5 bg-surface p-5 shadow-card ${className}`}>{children}</div>
 );
 
 export const EmptyState = ({ icon: Icon = Inbox, title, description, action }) => (
-  <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-black/10 bg-white/60 px-6 py-14 text-center">
+  <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/10 bg-surface/60 px-6 py-14 text-center">
     <div className="mb-3 rounded-full bg-teal-50 p-3 text-teal-500">
       <Icon size={22} />
     </div>

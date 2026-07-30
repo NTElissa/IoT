@@ -12,10 +12,11 @@ export const bandColor = {
 };
 
 export const roleLabel = {
+  super_admin: 'Super Admin',
   admin: 'Administrator',
   doctor: 'Doctor',
   nurse: 'Nurse',
-  support_staff: 'Support Staff',
+  staff: 'Staff Member',
 };
 
 export const formatDateTime = (value) => {

@@ -29,7 +29,10 @@ api.interceptors.response.use(
 export const unwrap = (promise) =>
   promise.then((res) => res.data.data).catch((err) => {
     const message = err.response?.data?.message || err.message || 'Request failed';
-    throw new Error(message);
+    const wrapped = new Error(message);
+    wrapped.status = err.response?.status;
+    wrapped.data = err.response?.data?.data;
+    throw wrapped;
   });
 
 export default api;

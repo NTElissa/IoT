@@ -8,7 +8,7 @@ const IVStatusCard = ({ bag, onDelegate, onAcknowledge, canManage }) => {
   const unacknowledgedAlert = bag.alerts?.find((a) => !a.acknowledged);
 
   return (
-    <div className="rounded-2xl border border-black/5 bg-white p-4 shadow-card">
+    <div className="rounded-2xl border border-border/5 bg-surface p-4 shadow-card">
       <div className="flex items-start justify-between">
         <div>
           <p className="font-display text-sm font-semibold text-ink">{bag.patient?.name || 'Unknown patient'}</p>
@@ -42,7 +42,7 @@ const IVStatusCard = ({ bag, onDelegate, onAcknowledge, canManage }) => {
           {unacknowledgedAlert && (
             <button
               onClick={() => onAcknowledge?.(bag, unacknowledgedAlert)}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-black/10 px-3 py-2 text-xs font-medium text-ink/70 hover:bg-mist"
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-border/10 px-3 py-2 text-xs font-medium text-ink/70 hover:bg-mist"
             >
               <Check size={14} /> Acknowledge
             </button>

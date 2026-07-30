@@ -43,7 +43,7 @@ const DashboardPage = () => {
       <div className="mt-8">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-display text-lg font-semibold text-ink">
-            {user.role === 'support_staff' ? 'IV bags in monitored rooms' : 'Live IV monitoring'}
+            {user.role === 'staff' ? 'IV bags in monitored rooms' : 'Live IV monitoring'}
           </h2>
           {loading && <Spinner />}
         </div>

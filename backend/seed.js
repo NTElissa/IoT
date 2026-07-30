@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
 import connectDB from './src/config/database.js';
+import Hospital from './src/models/Hospital.js';
 import User from './src/models/User.js';
 import Room from './src/models/Room.js';
 import Patient from './src/models/Patient.js';
@@ -15,6 +16,7 @@ const run = async () => {
   await connectDB();
   console.log('[seed] Clearing existing data...');
   await Promise.all([
+    Hospital.deleteMany({}),
     User.deleteMany({}),
     Room.deleteMany({}),
     Patient.deleteMany({}),
@@ -22,64 +24,91 @@ const run = async () => {
     Task.deleteMany({}),
   ]);
 
-  console.log('[seed] Creating users...');
+  console.log('[seed] Creating platform super administrator...');
+  const superAdmin = await User.create({
+    name: 'Platform Super Admin',
+    email: 'superadmin@dripwatch.rw',
+    password: 'SuperAdmin@12345',
+    role: 'super_admin',
+    phone: '+250700000000',
+    hospital: null,
+  });
+
+  console.log('[seed] Registering Remera Rukoma Hospital...');
+  const hospital = await Hospital.create({
+    name: 'Remera Rukoma Hospital',
+    address: 'Remera Rukoma, Rwanda',
+    phone: '+250780000000',
+    createdBy: superAdmin._id,
+  });
+
   const admin = await User.create({
     name: 'Dr. MUSABE Jean Bosco',
     email: 'admin@remerarukoma.rw',
     password: 'Admin@12345',
     role: 'admin',
-    phone: '+250781832092',
+    // Real number provided during setup - receives real SMS once
+    // AT_USERNAME/AT_API_KEY are configured in backend/.env.
+    phone: '+250738382033',
+    hospital: hospital._id,
     ward: 'Administration',
+    createdBy: superAdmin._id,
   });
 
-  const doctors = await User.insertMany(
-    Array.from({ length: 5 }).map((_, i) => ({
-      name: `Dr. ${['Uwase', 'Habimana', 'Mukamana', 'Niyonzima', 'Ingabire'][i]}`,
-      email: `doctor${i + 1}@remerarukoma.rw`,
-      password: 'Doctor@12345',
-      role: 'doctor',
-      phone: `+25078000010${i}`,
-      ward: WARDS[i % WARDS.length],
-      createdBy: admin._id,
-    }))
-  );
-  // re-hash since insertMany skips pre-save hooks
-  for (const doc of doctors) {
-    doc.password = 'Doctor@12345';
-    await doc.save();
+  const doctors = [];
+  const doctorNames = ['Uwase', 'Habimana', 'Mukamana', 'Niyonzima', 'Ingabire'];
+  for (let i = 0; i < doctorNames.length; i += 1) {
+    doctors.push(
+      await User.create({
+        name: `Dr. ${doctorNames[i]}`,
+        email: `doctor${i + 1}@remerarukoma.rw`,
+        password: 'Doctor@12345',
+        role: 'doctor',
+        phone: `+25078000010${i}`,
+        ward: WARDS[i % WARDS.length],
+        hospital: hospital._id,
+        createdBy: admin._id,
+      })
+    );
   }
 
+  const nurses = [];
   const nurseNames = [
     'Kamanzi', 'Uwimana', 'Mugisha', 'Nyirahabimana', 'Bizimana',
     'Uwera', 'Twagirayezu', 'Mutesi', 'Ndayisenga', 'Umutoni',
     'Rugamba', 'Iradukunda', 'Nsengimana', 'Uwamahoro', 'Byiringiro',
   ];
-  const nursesRaw = nurseNames.map((n, i) => ({
-    name: `Nurse ${n}`,
-    email: `nurse${i + 1}@remerarukoma.rw`,
-    password: 'Nurse@12345',
-    role: 'nurse',
-    phone: `+25078000020${i}`,
-    ward: WARDS[i % WARDS.length],
-    createdBy: admin._id,
-  }));
-  const nurses = [];
-  for (const n of nursesRaw) {
-    nurses.push(await User.create(n));
+  for (let i = 0; i < nurseNames.length; i += 1) {
+    nurses.push(
+      await User.create({
+        name: `Nurse ${nurseNames[i]}`,
+        email: `nurse${i + 1}@remerarukoma.rw`,
+        password: 'Nurse@12345',
+        role: 'nurse',
+        // nurse1 gets the second real phone number provided so live SMS
+        // alerts (bag-change requests, escalations) can be tested end-to-end.
+        phone: i === 0 ? '+250781832092' : `+25078000020${i}`,
+        ward: WARDS[i % WARDS.length],
+        hospital: hospital._id,
+        createdBy: admin._id,
+      })
+    );
   }
 
-  const supportRaw = Array.from({ length: 10 }).map((_, i) => ({
-    name: `Support Staff ${i + 1}`,
-    email: `support${i + 1}@remerarukoma.rw`,
-    password: 'Support@12345',
-    role: 'support_staff',
-    phone: `+25078000030${i}`,
-    ward: WARDS[i % WARDS.length],
-    createdBy: admin._id,
-  }));
-  const supportStaff = [];
-  for (const s of supportRaw) {
-    supportStaff.push(await User.create(s));
+  const staffMembers = [];
+  for (let i = 0; i < 10; i += 1) {
+    staffMembers.push(
+      await User.create({
+        name: `Staff Member ${i + 1}`,
+        email: `staff${i + 1}@remerarukoma.rw`,
+        password: 'Staff@12345',
+        role: 'staff',
+        phone: `+25078000030${i}`,
+        ward: WARDS[i % WARDS.length],
+        hospital: hospital._id,
+        createdBy: admin._id,
+      })
+    );
   }
 
   console.log('[seed] Creating rooms...');
@@ -87,11 +116,12 @@ const run = async () => {
   for (let i = 1; i <= 12; i += 1) {
     const ward = WARDS[i % WARDS.length];
     const room = await Room.create({
+      hospital: hospital._id,
       roomNumber: `R${100 + i}`,
       ward,
       bedCount: 2,
       assignedDoctors: [doctors[i % doctors.length]._id],
-      assignedNurses: [nurses[i % nurses.length]._id, nurses[(i + 1) % nurses.length]._id],
+      assignedNurses: [nurses[(i - 1) % nurses.length]._id, nurses[i % nurses.length]._id],
       status: 'occupied',
       createdBy: admin._id,
     });
@@ -104,6 +134,7 @@ const run = async () => {
   for (let i = 1; i <= 20; i += 1) {
     const room = rooms[i % rooms.length];
     const patient = await Patient.create({
+      hospital: hospital._id,
       name: `Patient ${String.fromCharCode(64 + ((i % 26) + 1))}${i}`,
       dateOfBirth: new Date(1950 + (i % 60), i % 12, (i % 27) + 1),
       gender: genders[i % 2],
@@ -125,12 +156,12 @@ const run = async () => {
     const bagSize = [500, 1000][i % 2];
     const emptyBagWeight = 30;
     const initialWeight = emptyBagWeight + bagSize;
-    // Vary starting fluid levels so the dashboard shows a mix of statuses
     const startingLevelPct = [95, 60, 45, 15, 8, 30, 70, 90, 5, 55, 40, 65, 20, 12, 80][i];
     const currentWeight = emptyBagWeight + (startingLevelPct / 100) * bagSize;
     const flowRate = 100 + (i % 4) * 25;
 
     await IVFluid.create({
+      hospital: hospital._id,
       fluidType: FLUID_TYPES[i % FLUID_TYPES.length],
       bagSize,
       emptyBagWeight,
@@ -153,6 +184,7 @@ const run = async () => {
     const bagSize = 500;
     const emptyBagWeight = 30;
     await IVFluid.create({
+      hospital: hospital._id,
       fluidType: FLUID_TYPES[i % FLUID_TYPES.length],
       bagSize,
       emptyBagWeight,
@@ -170,27 +202,86 @@ const run = async () => {
   }
 
   console.log('[seed] Creating sample delegated tasks...');
-  const lowBags = await IVFluid.find({ status: 'alert_low' }).populate('room patient');
+  const lowBags = await IVFluid.find({ hospital: hospital._id, status: 'alert_low' }).populate('room patient');
   for (const bag of lowBags) {
     await Task.create({
+      hospital: hospital._id,
       ivFluid: bag._id,
       room: bag.room._id,
       patient: bag.patient._id,
       assignedBy: bag.room.assignedNurses[0],
-      assignedTo: supportStaff[Math.floor(Math.random() * supportStaff.length)]._id,
+      assignedTo: staffMembers[Math.floor(Math.random() * staffMembers.length)]._id,
       taskType: 'bag_change',
       description: `Change IV bag for ${bag.patient.name} in room ${bag.room.roomNumber}`,
       status: 'pending',
     });
   }
 
+  console.log('[seed] Registering a second hospital to demonstrate multi-tenancy...');
+  const hospital2 = await Hospital.create({
+    name: 'Kibagabaga District Hospital',
+    address: 'Kibagabaga, Kigali, Rwanda',
+    createdBy: superAdmin._id,
+  });
+  const admin2 = await User.create({
+    name: 'Dr. Alice Mukandayisenga',
+    email: 'admin@kibagabaga.rw',
+    password: 'Admin@12345',
+    role: 'admin',
+    hospital: hospital2._id,
+    createdBy: superAdmin._id,
+  });
+  const doctor2 = await User.create({
+    name: 'Dr. Eric Nshuti',
+    email: 'doctor1@kibagabaga.rw',
+    password: 'Doctor@12345',
+    role: 'doctor',
+    hospital: hospital2._id,
+    ward: 'Medical',
+    createdBy: admin2._id,
+  });
+  const nurse2 = await User.create({
+    name: 'Nurse Claudine Umuhoza',
+    email: 'nurse1@kibagabaga.rw',
+    password: 'Nurse@12345',
+    role: 'nurse',
+    hospital: hospital2._id,
+    ward: 'Medical',
+    createdBy: admin2._id,
+  });
+  const room2 = await Room.create({
+    hospital: hospital2._id,
+    roomNumber: 'K101',
+    ward: 'Medical',
+    bedCount: 2,
+    assignedDoctors: [doctor2._id],
+    assignedNurses: [nurse2._id],
+    createdBy: admin2._id,
+  });
+  await Patient.create({
+    hospital: hospital2._id,
+    name: 'Patient K1',
+    gender: 'F',
+    room: room2._id,
+    bed: 'A',
+    assignedDoctor: doctor2._id,
+    assignedNurse: nurse2._id,
+    createdBy: admin2._id,
+  });
+
   console.log('[seed] Done.');
   console.log('');
   console.log('Demo login credentials:');
-  console.log(`  Admin:   admin@remerarukoma.rw / Admin@12345`);
-  console.log(`  Doctor:  doctor1@remerarukoma.rw / Doctor@12345`);
-  console.log(`  Nurse:   nurse1@remerarukoma.rw / Nurse@12345`);
-  console.log(`  Support: support1@remerarukoma.rw / Support@12345`);
+  console.log('  Super Admin: superadmin@dripwatch.rw / SuperAdmin@12345');
+  console.log('  --- Remera Rukoma Hospital ---');
+  console.log('  Admin:   admin@remerarukoma.rw / Admin@12345');
+  console.log('  Doctor:  doctor1@remerarukoma.rw / Doctor@12345');
+  console.log('  Nurse:   nurse1@remerarukoma.rw / Nurse@12345');
+  console.log('  Staff:   staff1@remerarukoma.rw / Staff@12345');
+  console.log('  --- Kibagabaga District Hospital (multi-tenancy demo) ---');
+  console.log('  Admin:   admin@kibagabaga.rw / Admin@12345');
+  console.log('  Doctor:  doctor1@kibagabaga.rw / Doctor@12345');
+  console.log('  Nurse:   nurse1@kibagabaga.rw / Nurse@12345');
 
   await mongoose.connection.close();
   process.exit(0);

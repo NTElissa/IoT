@@ -13,7 +13,7 @@ const DelegateTaskModal = ({ bag, onClose, onDelegated }) => {
 
   useEffect(() => {
     if (!bag) return;
-    userService.getUsers({ role: 'support_staff' }).then(setStaff).catch(() => {});
+    userService.getUsers({ role: 'staff' }).then(setStaff).catch(() => {});
     setDescription(
       `Change IV bag for ${bag.patient?.name || 'patient'} in room ${bag.room?.roomNumber || ''}`
     );
@@ -59,7 +59,7 @@ const DelegateTaskModal = ({ bag, onClose, onDelegated }) => {
           <select
             value={taskType}
             onChange={(e) => setTaskType(e.target.value)}
-            className="w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
+            className="w-full rounded-lg border border-border/10 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
           >
             <option value="bag_change">Bag change</option>
             <option value="bag_removal">Bag removal</option>
@@ -73,7 +73,7 @@ const DelegateTaskModal = ({ bag, onClose, onDelegated }) => {
           <select
             value={assignedTo}
             onChange={(e) => setAssignedTo(e.target.value)}
-            className="w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
+            className="w-full rounded-lg border border-border/10 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
           >
             <option value="">Select support staff…</option>
             {staff.map((s) => (
@@ -90,7 +90,7 @@ const DelegateTaskModal = ({ bag, onClose, onDelegated }) => {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
-            className="w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
+            className="w-full rounded-lg border border-border/10 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
           />
         </div>
 

@@ -3,10 +3,10 @@ import Room from '../models/Room.js';
 import { success } from '../utils/apiResponse.js';
 
 export const getAlerts = async (req, res) => {
-  let roomFilter = {};
+  let roomFilter = { hospital: req.user.hospital };
   if (req.user.role === 'doctor' || req.user.role === 'nurse') {
     const roomField = req.user.role === 'doctor' ? 'assignedDoctors' : 'assignedNurses';
-    const rooms = await Room.find({ [roomField]: req.user._id }).select('_id');
+    const rooms = await Room.find({ hospital: req.user.hospital, [roomField]: req.user._id }).select('_id');
     roomFilter.room = { $in: rooms.map((r) => r._id) };
   }
 

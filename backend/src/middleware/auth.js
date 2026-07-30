@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import env from '../config/env.js';
 import User from '../models/User.js';
+import Hospital from '../models/Hospital.js';
 import { failure } from '../utils/apiResponse.js';
 
 export const protect = async (req, res, next) => {
@@ -17,9 +18,18 @@ export const protect = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, env.jwtSecret);
+    if (decoded.purpose && decoded.purpose !== 'access') {
+      return failure(res, { message: 'Not authorized, invalid token type', status: 401 });
+    }
     const user = await User.findById(decoded.id);
     if (!user || !user.isActive) {
       return failure(res, { message: 'User not found or deactivated', status: 401 });
+    }
+    if (user.hospital) {
+      const hospital = await Hospital.findById(user.hospital);
+      if (!hospital || !hospital.isActive) {
+        return failure(res, { message: 'This hospital account has been suspended', status: 403 });
+      }
     }
     req.user = user;
     next();

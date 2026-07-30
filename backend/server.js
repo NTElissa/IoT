@@ -19,7 +19,7 @@ const start = async () => {
   startSimulation();
 
   server.listen(env.port, () => {
-    console.log(`[server] Smart IV Monitoring API listening on port http://localhost:${env.port} (${env.nodeEnv})`);
+    console.log(`[server] Smart IV Monitoring API listening on port ${env.port} (${env.nodeEnv})`);
   });
 };
 

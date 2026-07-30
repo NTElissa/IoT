@@ -4,6 +4,7 @@ import {
   getUser,
   createUser,
   updateUser,
+  changeRole,
   resetPassword,
   deleteUser,
 } from '../controllers/userController.js';
@@ -17,6 +18,7 @@ router.get('/', getUsers);
 router.get('/:id', getUser);
 router.post('/', createUser);
 router.put('/:id', updateUser);
+router.patch('/:id/role', changeRole);
 router.patch('/:id/reset-password', resetPassword);
 router.delete('/:id', deleteUser);
 

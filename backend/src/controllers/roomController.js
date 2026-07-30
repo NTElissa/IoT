@@ -2,22 +2,25 @@ import Room from '../models/Room.js';
 import { success, failure } from '../utils/apiResponse.js';
 
 export const getRooms = async (req, res) => {
-  let filter = {};
+  let filter = { hospital: req.user.hospital };
   // Non-admin staff only see rooms they're assigned to
   if (req.user.role === 'doctor') filter.assignedDoctors = req.user._id;
   if (req.user.role === 'nurse') filter.assignedNurses = req.user._id;
+  if (req.user.role === 'staff') filter.assignedStaff = req.user._id;
 
   const rooms = await Room.find(filter)
     .populate('assignedDoctors', 'name email phone')
     .populate('assignedNurses', 'name email phone')
+    .populate('assignedStaff', 'name email phone')
     .sort({ roomNumber: 1 });
   return success(res, { data: rooms });
 };
 
 export const getRoom = async (req, res) => {
-  const room = await Room.findById(req.params.id)
+  const room = await Room.findOne({ _id: req.params.id, hospital: req.user.hospital })
     .populate('assignedDoctors', 'name email phone')
-    .populate('assignedNurses', 'name email phone');
+    .populate('assignedNurses', 'name email phone')
+    .populate('assignedStaff', 'name email phone');
   if (!room) return failure(res, { message: 'Room not found', status: 404 });
   return success(res, { data: room });
 };
@@ -27,7 +30,7 @@ export const createRoom = async (req, res) => {
   if (!roomNumber || !ward) {
     return failure(res, { message: 'Room number and ward are required', status: 400 });
   }
-  const existing = await Room.findOne({ roomNumber });
+  const existing = await Room.findOne({ roomNumber, hospital: req.user.hospital });
   if (existing) {
     return failure(res, { message: 'A room with this number already exists', status: 409 });
   }
@@ -35,6 +38,7 @@ export const createRoom = async (req, res) => {
     roomNumber,
     ward,
     bedCount: bedCount || 1,
+    hospital: req.user.hospital,
     createdBy: req.user._id,
   });
   return success(res, { message: 'Room created', data: room, status: 201 });
@@ -42,7 +46,7 @@ export const createRoom = async (req, res) => {
 
 export const updateRoom = async (req, res) => {
   const { ward, bedCount, status } = req.body;
-  const room = await Room.findById(req.params.id);
+  const room = await Room.findOne({ _id: req.params.id, hospital: req.user.hospital });
   if (!room) return failure(res, { message: 'Room not found', status: 404 });
   if (ward !== undefined) room.ward = ward;
   if (bedCount !== undefined) room.bedCount = bedCount;
@@ -51,19 +55,21 @@ export const updateRoom = async (req, res) => {
   return success(res, { message: 'Room updated', data: room });
 };
 
+// Admin assigns doctors, nurses, AND staff members to a room in one call.
 export const assignStaff = async (req, res) => {
-  const { doctorIds = [], nurseIds = [] } = req.body;
-  const room = await Room.findById(req.params.id);
+  const { doctorIds = [], nurseIds = [], staffIds = [] } = req.body;
+  const room = await Room.findOne({ _id: req.params.id, hospital: req.user.hospital });
   if (!room) return failure(res, { message: 'Room not found', status: 404 });
   room.assignedDoctors = doctorIds;
   room.assignedNurses = nurseIds;
+  room.assignedStaff = staffIds;
   await room.save();
-  const populated = await room.populate(['assignedDoctors', 'assignedNurses']);
+  const populated = await room.populate(['assignedDoctors', 'assignedNurses', 'assignedStaff']);
   return success(res, { message: 'Room staff assignment updated', data: populated });
 };
 
 export const deleteRoom = async (req, res) => {
-  const room = await Room.findById(req.params.id);
+  const room = await Room.findOne({ _id: req.params.id, hospital: req.user.hospital });
   if (!room) return failure(res, { message: 'Room not found', status: 404 });
   await room.deleteOne();
   return success(res, { message: 'Room deleted' });

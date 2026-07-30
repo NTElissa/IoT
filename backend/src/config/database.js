@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 export const connectDB = async () => {
   try {
-    const uri = process.env.MONGO_URI || 'mongodb://localhost:27017/smart_iv_monitoring';
+    const uri = process.env.MONGO_URI || 'mongodb://localhost:27017/tst5IVfluid';
     await mongoose.connect(uri);
     console.log(`[db] MongoDB connected: ${mongoose.connection.host}/${mongoose.connection.name}`);
   } catch (err) {

@@ -10,9 +10,11 @@ import {
   ClipboardList,
   BarChart3,
   UserCog,
+  Building2,
 } from 'lucide-react';
 
 const linksByRole = {
+  super_admin: [{ to: '/hospitals', label: 'Hospitals', icon: Building2 }],
   admin: [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
     { to: '/patients', label: 'Patients', icon: Users },
@@ -34,8 +36,9 @@ const linksByRole = {
     { to: '/patients', label: 'My Patients', icon: Users },
     { to: '/iv-fluids', label: 'IV Fluids', icon: Droplet },
     { to: '/tasks', label: 'Tasks', icon: ClipboardList },
+    { to: '/reports', label: 'Reports', icon: BarChart3 },
   ],
-  support_staff: [
+  staff: [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
     { to: '/tasks', label: 'My Tasks', icon: ClipboardList },
   ],
@@ -68,7 +71,7 @@ const MobileSidebar = ({ open, onClose }) => {
               onClick={onClose}
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium ${
-                  isActive ? 'bg-white/15 text-white' : 'text-teal-50/80 hover:bg-white/10'
+                  isActive ? 'bg-surface/15 text-white' : 'text-teal-50/80 hover:bg-surface/10'
                 }`
               }
             >

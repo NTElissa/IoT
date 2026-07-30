@@ -12,7 +12,7 @@ const NotificationTray = () => {
       {notifications.slice(0, 4).map((n) => (
         <div
           key={n.id}
-          className="pointer-events-auto flex items-start gap-3 rounded-xl border border-teal-100 bg-white p-3 shadow-card"
+          className="pointer-events-auto flex items-start gap-3 rounded-xl border border-teal-100 bg-surface p-3 shadow-card"
         >
           <div className="mt-0.5 rounded-full bg-teal-50 p-1.5 text-teal-600">
             {n.channel === 'alert' ? <BellRing size={16} /> : <Radio size={16} />}

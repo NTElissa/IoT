@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 
 const patientSchema = new mongoose.Schema(
   {
+    hospital: { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital', required: true },
     name: { type: String, required: true, trim: true },
     dateOfBirth: { type: Date },
     gender: { type: String, enum: ['M', 'F', 'Other'], required: true },

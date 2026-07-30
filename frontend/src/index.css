@@ -2,12 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-ink: 11 32 39;        /* #0B2027 - primary text on light bg */
+  --color-mist: 247 249 249;    /* #F7F9F9 - page background */
+  --color-surface: 255 255 255; /* #FFFFFF - card/modal/input background */
+  --color-border: 11 32 39;     /* same hue as ink, used at low alpha for hairlines */
+}
+
+.dark {
+  --color-ink: 226 236 236;     /* light text on dark background */
+  --color-mist: 12 20 23;       /* near-black page background */
+  --color-surface: 23 34 38;    /* dark card/modal/input background */
+  --color-border: 226 236 236;  /* light hairlines at low alpha */
+}
+
 html {
   scroll-behavior: smooth;
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
 }
 
 body {
-  @apply bg-mist text-ink font-body antialiased;
+  @apply bg-mist text-ink font-body antialiased transition-colors duration-200;
 }
 
 ::selection {

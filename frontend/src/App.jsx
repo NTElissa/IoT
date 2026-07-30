@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import LandingPage from './pages/LandingPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
+import HospitalsPage from './pages/HospitalsPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import PatientsPage from './pages/PatientsPage.jsx';
 import RoomsPage from './pages/RoomsPage.jsx';
@@ -10,6 +11,7 @@ import StaffPage from './pages/StaffPage.jsx';
 import IVFluidsPage from './pages/IVFluidsPage.jsx';
 import TasksPage from './pages/TasksPage.jsx';
 import ReportsPage from './pages/ReportsPage.jsx';
+import SecurityPage from './pages/SecurityPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import ProtectedRoute from './components/common/ProtectedRoute.jsx';
 
@@ -20,9 +22,18 @@ const App = () => (
     <Route path="/register" element={<RegisterPage />} />
 
     <Route
+      path="/hospitals"
+      element={
+        <ProtectedRoute roles={['super_admin']}>
+          <HospitalsPage />
+        </ProtectedRoute>
+      }
+    />
+
+    <Route
       path="/dashboard"
       element={
-        <ProtectedRoute>
+        <ProtectedRoute roles={['admin', 'doctor', 'nurse', 'staff']}>
           <DashboardPage />
         </ProtectedRoute>
       }
@@ -54,7 +65,7 @@ const App = () => (
     <Route
       path="/iv-fluids"
       element={
-        <ProtectedRoute roles={['admin', 'doctor', 'nurse', 'support_staff']}>
+        <ProtectedRoute roles={['admin', 'doctor', 'nurse', 'staff']}>
           <IVFluidsPage />
         </ProtectedRoute>
       }
@@ -62,7 +73,7 @@ const App = () => (
     <Route
       path="/tasks"
       element={
-        <ProtectedRoute roles={['admin', 'doctor', 'nurse', 'support_staff']}>
+        <ProtectedRoute roles={['admin', 'doctor', 'nurse', 'staff']}>
           <TasksPage />
         </ProtectedRoute>
       }
@@ -70,8 +81,17 @@ const App = () => (
     <Route
       path="/reports"
       element={
-        <ProtectedRoute roles={['admin', 'doctor']}>
+        <ProtectedRoute roles={['admin', 'doctor', 'nurse']}>
           <ReportsPage />
+        </ProtectedRoute>
+      }
+    />
+
+    <Route
+      path="/security"
+      element={
+        <ProtectedRoute roles={['super_admin', 'admin', 'doctor', 'nurse', 'staff']}>
+          <SecurityPage />
         </ProtectedRoute>
       }
     />

@@ -1,7 +1,10 @@
-// Simulated notification channels. In a production deployment these would
-// call a real SMS gateway (e.g. Twilio / a Rwandan telco API) and a push
-// notification service. Here we log them and always emit to the dashboard
-// over Socket.IO so the behaviour is fully demonstrable offline.
+import { sendSMS } from './smsProviderService.js';
+
+// Simulated app-push / always-on dashboard channel, plus real (or
+// gracefully-simulated) SMS via smsProviderService. Every broadcast is
+// scoped to (a) the specific staff assigned to the relevant room/patient
+// via `user:<id>` socket rooms, and (b) that hospital's admins via
+// `hospital-admin:<hospitalId>` - never anyone outside that hospital.
 
 let ioInstance = null;
 
@@ -9,36 +12,42 @@ export const attachIO = (io) => {
   ioInstance = io;
 };
 
-const emit = (event, payload) => {
-  if (ioInstance) {
-    ioInstance.emit(event, payload);
-  }
+const emitScoped = (event, payload, targetUserIds, hospitalId) => {
+  if (!ioInstance) return;
+  const userRooms = (targetUserIds || []).map((id) => `user:${id.toString()}`);
+  const rooms = [...new Set(userRooms)];
+  if (hospitalId) rooms.push(`hospital-admin:${hospitalId.toString()}`);
+
+  if (!rooms.length) return; // never broadcast globally - every event must be scoped
+
+  ioInstance.to(rooms).emit(event, payload);
 };
 
-export const notifyDashboard = (payload) => {
-  emit('notification', { channel: 'dashboard', ...payload });
+export const notifyDashboard = (payload, targetUserIds, hospitalId) => {
+  emitScoped('notification', { channel: 'dashboard', ...payload }, targetUserIds, hospitalId);
 };
 
 export const notifySMS = (toUser, message) => {
-  // Simulated SMS - logged to console, would be a real gateway call in production
-  console.log(`[sms-sim] -> ${toUser?.phone || 'unknown number'}: ${message}`);
-  emit('notification', { channel: 'sms', to: toUser?.name, message });
+  if (!toUser?.phone) return;
+  // Fire-and-forget - never let an SMS failure block the request/response cycle.
+  sendSMS({ to: toUser.phone, message }).catch(() => {});
+  emitScoped('notification', { channel: 'sms', to: toUser?.name, message }, toUser?._id ? [toUser._id] : []);
 };
 
 export const notifyApp = (toUserId, payload) => {
-  emit('notification', { channel: 'app', to: toUserId, ...payload });
+  emitScoped('notification', { channel: 'app', to: toUserId, ...payload }, toUserId ? [toUserId] : []);
 };
 
-export const broadcastAlert = (alertPayload) => {
-  emit('alert', alertPayload);
+export const broadcastAlert = (alertPayload, targetUserIds, hospitalId) => {
+  emitScoped('alert', alertPayload, targetUserIds, hospitalId);
 };
 
-export const broadcastIVUpdate = (ivFluid) => {
-  emit('iv-update', ivFluid);
+export const broadcastIVUpdate = (ivFluid, targetUserIds, hospitalId) => {
+  emitScoped('iv-update', ivFluid, targetUserIds, hospitalId);
 };
 
-export const broadcastTaskUpdate = (task) => {
-  emit('task-update', task);
+export const broadcastTaskUpdate = (task, targetUserIds, hospitalId) => {
+  emitScoped('task-update', task, targetUserIds, hospitalId);
 };
 
 export default {

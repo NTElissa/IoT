@@ -9,10 +9,12 @@ import {
   BarChart3,
   UserCog,
   Droplets,
+  Building2,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 const linksByRole = {
+  super_admin: [{ to: '/hospitals', label: 'Hospitals', icon: Building2 }],
   admin: [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
     { to: '/patients', label: 'Patients', icon: Users },
@@ -34,8 +36,9 @@ const linksByRole = {
     { to: '/patients', label: 'My Patients', icon: Users },
     { to: '/iv-fluids', label: 'IV Fluids', icon: Droplet },
     { to: '/tasks', label: 'Tasks', icon: ClipboardList },
+    { to: '/reports', label: 'Reports', icon: BarChart3 },
   ],
-  support_staff: [
+  staff: [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
     { to: '/tasks', label: 'My Tasks', icon: ClipboardList },
   ],
@@ -48,7 +51,7 @@ const Sidebar = () => {
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r border-teal-700/20 bg-teal-600 text-white md:flex">
       <div className="flex items-center gap-2 px-5 py-5">
-        <div className="rounded-lg bg-white/10 p-1.5">
+        <div className="rounded-lg bg-surface/10 p-1.5">
           <Droplets size={20} />
         </div>
         <span className="font-display text-lg font-semibold">DripWatch</span>
@@ -60,7 +63,7 @@ const Sidebar = () => {
             to={to}
             className={({ isActive }) =>
               `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                isActive ? 'bg-white/15 text-white' : 'text-teal-50/80 hover:bg-white/10 hover:text-white'
+                isActive ? 'bg-surface/15 text-white' : 'text-teal-50/80 hover:bg-surface/10 hover:text-white'
               }`
             }
           >
@@ -70,7 +73,7 @@ const Sidebar = () => {
         ))}
       </nav>
       <div className="px-5 py-4 text-xs text-teal-50/60">
-        Remera Rukoma Hospital
+        {user?.role === 'super_admin' ? 'DripWatch Platform' : 'Hospital Portal'}
         <br />
         Smart IV Monitoring
       </div>

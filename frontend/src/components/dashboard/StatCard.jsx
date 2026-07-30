@@ -8,7 +8,7 @@ const StatCard = ({ label, value, icon: Icon, tone = 'teal' }) => {
     good: 'bg-good/10 text-good',
   };
   return (
-    <div className="rounded-2xl border border-black/5 bg-white p-5 shadow-card">
+    <div className="rounded-2xl border border-border/5 bg-surface p-5 shadow-card">
       <div className="flex items-center justify-between">
         <p className="text-xs font-medium uppercase tracking-wide text-ink/40">{label}</p>
         {Icon && (

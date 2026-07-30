@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ClipboardList, Check, ArrowUpCircle } from 'lucide-react';
 import AppLayout from '../components/common/AppLayout.jsx';
+import SearchInput from '../components/common/SearchInput.jsx';
 import { Card, EmptyState, ErrorState, Spinner } from '../components/common/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSocket } from '../context/SocketContext.jsx';
@@ -20,6 +21,17 @@ const TasksPage = () => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+
+  const filteredTasks = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return tasks;
+    return tasks.filter((t) =>
+      [t.taskType, t.patient?.name, t.room?.roomNumber, t.assignedTo?.name, t.assignedBy?.name]
+        .filter(Boolean)
+        .some((f) => f.toLowerCase().includes(q))
+    );
+  }, [tasks, search]);
 
   const load = () => {
     setLoading(true);
@@ -61,12 +73,16 @@ const TasksPage = () => {
   };
 
   return (
-    <AppLayout title={user.role === 'support_staff' ? 'My Tasks' : 'Tasks'}>
+    <AppLayout title={user.role === 'staff' ? 'My Tasks' : 'Tasks'}>
       <p className="mb-4 text-sm text-ink/50">
-        {user.role === 'support_staff'
+        {user.role === 'staff'
           ? 'Bag changes and other tasks delegated to you.'
           : 'Tasks you have delegated to support staff.'}
       </p>
+
+      <div className="mb-4 max-w-sm">
+        <SearchInput value={search} onChange={setSearch} placeholder="Search by patient, room, staff…" />
+      </div>
 
       {loading && <Spinner />}
       {error && <ErrorState message={error} />}
@@ -75,9 +91,13 @@ const TasksPage = () => {
         <EmptyState icon={ClipboardList} title="No tasks yet" description="Delegated tasks will show up here." />
       )}
 
-      {!loading && tasks.length > 0 && (
+      {!loading && tasks.length > 0 && !filteredTasks.length && (
+        <EmptyState icon={ClipboardList} title="No matches" description="Try a different search term." />
+      )}
+
+      {!loading && filteredTasks.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {tasks.map((task) => (
+          {filteredTasks.map((task) => (
             <Card key={task._id}>
               <div className="flex items-start justify-between">
                 <div>
@@ -105,7 +125,7 @@ const TasksPage = () => {
                   {task.status === 'pending' && (
                     <button
                       onClick={() => setInProgress(task)}
-                      className="flex-1 rounded-lg border border-black/10 px-3 py-2 text-xs font-medium text-ink/70 hover:bg-mist"
+                      className="flex-1 rounded-lg border border-border/10 px-3 py-2 text-xs font-medium text-ink/70 hover:bg-mist"
                     >
                       Start
                     </button>
@@ -116,7 +136,7 @@ const TasksPage = () => {
                   >
                     <Check size={13} /> Complete
                   </button>
-                  {user.role !== 'support_staff' && (
+                  {user.role !== 'staff' && (
                     <button
                       onClick={() => escalate(task)}
                       className="flex items-center justify-center gap-1.5 rounded-lg border border-crit/20 px-3 py-2 text-xs font-medium text-crit hover:bg-crit/5"

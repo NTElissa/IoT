@@ -11,6 +11,7 @@ import {
   WifiOff,
 } from 'lucide-react';
 import IVDripAnimation from '../components/common/IVDripAnimation.jsx';
+import ThemeToggle from '../components/common/ThemeToggle.jsx';
 
 const steps = [
   {
@@ -36,10 +37,11 @@ const steps = [
 ];
 
 const roles = [
-  { title: 'Administrators', body: 'Register patients, create staff accounts, assign rooms and IV fluids, review every report.' },
-  { title: 'Doctors', body: 'See only their assigned rooms and patients, prescribe IV therapy, monitor fluid status at a glance.' },
+  { title: 'Super Admins', body: 'Register new hospitals onto the platform and create each one\u2019s first administrator account.' },
+  { title: 'Administrators', body: 'Register patients, create staff accounts, change roles, assign rooms and IV fluids, review every report.' },
+  { title: 'Doctors', body: 'See only their assigned rooms and patients, register new patients, prescribe IV therapy.' },
   { title: 'Nurses', body: 'Watch assigned rooms in real time, acknowledge alerts, delegate bag changes in one tap.' },
-  { title: 'Support Staff', body: 'Receive delegated tasks with room and bed details, confirm each one on completion.' },
+  { title: 'Staff Members', body: 'Receive delegated tasks with room and bed details, confirm each one on completion.' },
 ];
 
 const LandingPage = () => {
@@ -54,6 +56,7 @@ const LandingPage = () => {
           <span className="font-display text-lg font-semibold">DripWatch</span>
         </div>
         <div className="flex items-center gap-3">
+          <ThemeToggle />
           <Link to="/login" className="rounded-lg px-4 py-2 text-sm font-medium text-ink/70 hover:text-ink">
             Log in
           </Link>
@@ -61,7 +64,7 @@ const LandingPage = () => {
             to="/register"
             className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white shadow-card transition-colors hover:bg-teal-700"
           >
-            Set up hospital
+            Platform setup
           </Link>
         </div>
       </header>
@@ -85,11 +88,11 @@ const LandingPage = () => {
               to="/register"
               className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-5 py-3 text-sm font-medium text-white shadow-card transition-colors hover:bg-teal-700"
             >
-              Set up your hospital <ArrowRight size={16} />
+              Set up the platform <ArrowRight size={16} />
             </Link>
             <Link
               to="/login"
-              className="inline-flex items-center gap-2 rounded-lg border border-black/10 bg-white px-5 py-3 text-sm font-medium text-ink/70 transition-colors hover:bg-mist"
+              className="inline-flex items-center gap-2 rounded-lg border border-border/10 bg-surface px-5 py-3 text-sm font-medium text-ink/70 transition-colors hover:bg-mist"
             >
               I already have an account
             </Link>
@@ -101,7 +104,7 @@ const LandingPage = () => {
       </section>
 
       {/* Problem stats */}
-      <section className="border-y border-black/5 bg-white py-10">
+      <section className="border-y border-border/5 bg-surface py-10">
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-6 sm:grid-cols-3">
           <div>
             <p className="font-display text-3xl font-semibold text-teal-600">24/7</p>
@@ -126,7 +129,7 @@ const LandingPage = () => {
         </p>
         <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {steps.map((s) => (
-            <div key={s.n} className="rounded-2xl border border-black/5 bg-white p-5 shadow-card">
+            <div key={s.n} className="rounded-2xl border border-border/5 bg-surface p-5 shadow-card">
               <span className="font-mono-data text-xs text-teal-500">{s.n}</span>
               <h3 className="mt-2 font-display text-base font-semibold text-ink">{s.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-ink/50">{s.body}</p>
@@ -136,13 +139,13 @@ const LandingPage = () => {
       </section>
 
       {/* Roles */}
-      <section className="bg-white py-16">
+      <section className="bg-surface py-16">
         <div className="mx-auto max-w-6xl px-6">
-          <h2 className="font-display text-2xl font-semibold text-ink">One system, four sets of eyes</h2>
+          <h2 className="font-display text-2xl font-semibold text-ink">One system, five sets of eyes</h2>
           <p className="mt-2 max-w-xl text-sm text-ink/50">
             Everyone sees exactly what their role needs — nothing more.
           </p>
-          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {roles.map((r) => (
               <div key={r.title} className="rounded-2xl bg-mist p-5">
                 <Users2 size={18} className="text-teal-600" />
@@ -202,7 +205,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      <footer className="border-t border-black/5 py-8 text-center text-xs text-ink/40">
+      <footer className="border-t border-border/5 py-8 text-center text-xs text-ink/40">
         DripWatch — a Smart IV Monitoring System prototype for Remera Rukoma Hospital, Rwanda.
       </footer>
     </div>
