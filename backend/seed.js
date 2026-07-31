@@ -130,6 +130,7 @@ const run = async () => {
 
   console.log('[seed] Registering patients...');
   const genders = ['M', 'F'];
+  const allergyPool = ['Penicillin', 'Latex', 'Peanuts', 'Sulfa drugs', 'Iodine'];
   const patients = [];
   for (let i = 1; i <= 20; i += 1) {
     const room = rooms[i % rooms.length];
@@ -140,14 +141,31 @@ const run = async () => {
       gender: genders[i % 2],
       contact: `+25078801${String(1000 + i).slice(-4)}`,
       medicalHistory: 'No significant prior history recorded (demo data).',
+      allergies: i % 4 === 0 ? [allergyPool[i % allergyPool.length]] : [],
       room: room._id,
       bed: i % 2 === 0 ? 'A' : 'B',
       assignedDoctor: room.assignedDoctors[0],
       assignedNurse: room.assignedNurses[i % room.assignedNurses.length],
       createdBy: admin._id,
+      patientCode: `P-DEMO${String(i).padStart(2, '0')}`,
     });
     patients.push(patient);
   }
+
+  console.log('[seed] Enabling the portal for a demo patient...');
+  const demoPatient = patients[0];
+  const demoPortalUser = await User.create({
+    name: demoPatient.name,
+    email: `${demoPatient.patientCode.toLowerCase()}@patient.dripwatch.local`,
+    password: 'Patient@12345',
+    role: 'patient',
+    hospital: hospital._id,
+    patient: demoPatient._id,
+    createdBy: admin._id,
+  });
+  demoPatient.portalUser = demoPortalUser._id;
+  demoPatient.portalEnabled = true;
+  await demoPatient.save();
 
   console.log('[seed] Starting IV fluids...');
   for (let i = 0; i < 15; i += 1) {
@@ -278,6 +296,7 @@ const run = async () => {
   console.log('  Doctor:  doctor1@remerarukoma.rw / Doctor@12345');
   console.log('  Nurse:   nurse1@remerarukoma.rw / Nurse@12345');
   console.log('  Staff:   staff1@remerarukoma.rw / Staff@12345');
+  console.log(`  Patient: patient ID ${demoPatient.patientCode} / Patient@12345 (use the "Patient sign-in" tab)`);
   console.log('  --- Kibagabaga District Hospital (multi-tenancy demo) ---');
   console.log('  Admin:   admin@kibagabaga.rw / Admin@12345');
   console.log('  Doctor:  doctor1@kibagabaga.rw / Doctor@12345');

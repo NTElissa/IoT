@@ -12,6 +12,7 @@ import IVFluidsPage from './pages/IVFluidsPage.jsx';
 import TasksPage from './pages/TasksPage.jsx';
 import ReportsPage from './pages/ReportsPage.jsx';
 import SecurityPage from './pages/SecurityPage.jsx';
+import PatientPortalPage from './pages/PatientPortalPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import ProtectedRoute from './components/common/ProtectedRoute.jsx';
 
@@ -88,9 +89,18 @@ const App = () => (
     />
 
     <Route
+      path="/portal"
+      element={
+        <ProtectedRoute roles={['patient']}>
+          <PatientPortalPage />
+        </ProtectedRoute>
+      }
+    />
+
+    <Route
       path="/security"
       element={
-        <ProtectedRoute roles={['super_admin', 'admin', 'doctor', 'nurse', 'staff']}>
+        <ProtectedRoute roles={['super_admin', 'admin', 'doctor', 'nurse', 'staff', 'patient']}>
           <SecurityPage />
         </ProtectedRoute>
       }

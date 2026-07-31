@@ -11,7 +11,12 @@ export const SocketProvider = ({ children }) => {
   const socketRef = useRef(null);
   const [connected, setConnected] = useState(false);
   const [notifications, setNotifications] = useState([]);
-  const listenersRef = useRef({ ivUpdate: new Set(), taskUpdate: new Set(), alert: new Set() });
+  const listenersRef = useRef({
+    ivUpdate: new Set(),
+    taskUpdate: new Set(),
+    alert: new Set(),
+    chatMessage: new Set(),
+  });
 
   useEffect(() => {
     const token = localStorage.getItem('iv_token');
@@ -31,6 +36,10 @@ export const SocketProvider = ({ children }) => {
 
     socket.on('task-update', (payload) => {
       listenersRef.current.taskUpdate.forEach((cb) => cb(payload));
+    });
+
+    socket.on('chat-message', (payload) => {
+      listenersRef.current.chatMessage.forEach((cb) => cb(payload));
     });
 
     socket.on('alert', (payload) => {
@@ -58,6 +67,10 @@ export const SocketProvider = ({ children }) => {
       onAlert: (cb) => {
         listenersRef.current.alert.add(cb);
         return () => listenersRef.current.alert.delete(cb);
+      },
+      onChatMessage: (cb) => {
+        listenersRef.current.chatMessage.add(cb);
+        return () => listenersRef.current.chatMessage.delete(cb);
       },
     }),
     []

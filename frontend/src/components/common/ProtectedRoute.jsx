@@ -3,8 +3,13 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 // Where a user lands if they hit a route their role can't use. Super admins
-// live entirely in /hospitals; everyone else has a hospital dashboard.
-const defaultRouteFor = (role) => (role === 'super_admin' ? '/hospitals' : '/dashboard');
+// live entirely in /hospitals; patients live in /portal; everyone else has
+// a hospital dashboard.
+const defaultRouteFor = (role) => {
+  if (role === 'super_admin') return '/hospitals';
+  if (role === 'patient') return '/portal';
+  return '/dashboard';
+};
 
 const ProtectedRoute = ({ children, roles }) => {
   const { user, loading } = useAuth();

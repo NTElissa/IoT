@@ -48,6 +48,11 @@ export const AuthProvider = ({ children }) => {
     [applyAuthResult]
   );
 
+  const patientLogin = useCallback(
+    async (patientCode, password) => applyAuthResult(await authService.patientLogin(patientCode, password)),
+    [applyAuthResult]
+  );
+
   const loginWithGoogle = useCallback(
     async (idToken) => applyAuthResult(await authService.loginWithGoogle(idToken)),
     [applyAuthResult]
@@ -90,6 +95,7 @@ export const AuthProvider = ({ children }) => {
         user,
         loading,
         login,
+        patientLogin,
         loginWithGoogle,
         loginWithPasskey,
         completeTwoFactor,

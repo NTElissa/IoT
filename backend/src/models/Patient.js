@@ -8,6 +8,9 @@ const patientSchema = new mongoose.Schema(
     gender: { type: String, enum: ['M', 'F', 'Other'], required: true },
     contact: { type: String, trim: true },
     medicalHistory: { type: String, trim: true },
+    // Known allergies - surfaced prominently wherever this patient's chart
+    // is shown, especially before adding IV fluids or medications.
+    allergies: [{ type: String, trim: true }],
     room: { type: mongoose.Schema.Types.ObjectId, ref: 'Room' },
     bed: { type: String, trim: true },
     assignedDoctor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -16,6 +19,13 @@ const patientSchema = new mongoose.Schema(
     admittedAt: { type: Date, default: Date.now },
     dischargedAt: { type: Date },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+
+    // Patient portal: a short, globally-unique code the patient uses to log
+    // in themselves (in place of an email address), plus a link to the
+    // portal account once one has been created for them.
+    patientCode: { type: String, unique: true, sparse: true, index: true },
+    portalEnabled: { type: Boolean, default: false },
+    portalUser: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true }
 );

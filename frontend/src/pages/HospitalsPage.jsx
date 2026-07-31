@@ -18,6 +18,8 @@ const HospitalsPage = () => {
   const [formError, setFormError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [confirmName, setConfirmName] = useState('');
+  const [deleteError, setDeleteError] = useState('');
 
   const load = () => {
     setLoading(true);
@@ -53,10 +55,14 @@ const HospitalsPage = () => {
 
   const handleDelete = async () => {
     setDeleting(true);
+    setDeleteError('');
     try {
-      await hospitalService.deleteHospital(deleteTarget._id);
+      await hospitalService.deleteHospital(deleteTarget._id, confirmName);
       setDeleteTarget(null);
+      setConfirmName('');
       load();
+    } catch (err) {
+      setDeleteError(err.message);
     } finally {
       setDeleting(false);
     }
@@ -65,7 +71,10 @@ const HospitalsPage = () => {
   return (
     <AppLayout title="Hospitals">
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-sm text-ink/50">Register a new hospital and its first administrator account.</p>
+        <p className="text-sm text-ink/50">
+          Register a new hospital and its first administrator account. Disable a hospital to suspend its access
+          without losing its data - permanent deletion is only available for hospitals already disabled.
+        </p>
         <button
           onClick={() => {
             setForm(emptyForm);
@@ -94,25 +103,36 @@ const HospitalsPage = () => {
                   <p className="font-display text-base font-semibold text-ink">{h.name}</p>
                   <p className="text-xs text-ink/50">{h.address || 'No address on file'}</p>
                 </div>
-                <button
-                  onClick={() => toggleSuspended(h)}
+                <span
                   className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                     h.isActive ? 'bg-good/10 text-good' : 'bg-ink/5 text-ink/50'
                   }`}
                 >
-                  {h.isActive ? 'Active' : 'Suspended'}
-                </button>
+                  {h.isActive ? 'Active' : 'Disabled'}
+                </span>
               </div>
               <div className="mt-3 flex gap-4 text-xs text-ink/50">
                 <span>{h.adminCount} admin{h.adminCount === 1 ? '' : 's'}</span>
                 <span>{h.staffCount} staff total</span>
               </div>
               <button
-                onClick={() => setDeleteTarget(h)}
-                className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-lg border border-crit/20 px-3 py-2 text-xs font-medium text-crit hover:bg-crit/5"
+                onClick={() => toggleSuspended(h)}
+                className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-lg border border-border/10 px-3 py-2 text-xs font-medium text-ink/70 hover:bg-mist"
               >
-                <Trash2 size={13} /> Delete hospital
+                {h.isActive ? 'Disable hospital' : 'Re-enable hospital'}
               </button>
+              {!h.isActive && (
+                <button
+                  onClick={() => {
+                    setDeleteError('');
+                    setConfirmName('');
+                    setDeleteTarget(h);
+                  }}
+                  className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-crit/20 px-3 py-2 text-xs font-medium text-crit hover:bg-crit/5"
+                >
+                  <Trash2 size={13} /> Permanently delete
+                </button>
+              )}
             </Card>
           ))}
         </div>
@@ -204,8 +224,15 @@ const HospitalsPage = () => {
       <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title={`Delete ${deleteTarget?.name || ''}?`}>
         <p className="text-sm text-ink/60">
           This permanently deletes <strong>{deleteTarget?.name}</strong> and every account, room, patient, and
-          IV fluid record that belongs to it. This cannot be undone.
+          IV fluid record that belongs to it. This cannot be undone. Type the hospital's name to confirm.
         </p>
+        <input
+          value={confirmName}
+          onChange={(e) => setConfirmName(e.target.value)}
+          placeholder={deleteTarget?.name}
+          className="mt-3 w-full rounded-lg border border-border/10 px-3 py-2.5 text-sm outline-none focus:border-crit"
+        />
+        {deleteError && <p className="mt-3 rounded-lg bg-crit/5 px-3 py-2 text-sm text-crit">{deleteError}</p>}
         <div className="mt-5 flex gap-2">
           <button
             onClick={() => setDeleteTarget(null)}
@@ -215,8 +242,8 @@ const HospitalsPage = () => {
           </button>
           <button
             onClick={handleDelete}
-            disabled={deleting}
-            className="flex-1 rounded-lg bg-crit px-4 py-2.5 text-sm font-medium text-white hover:bg-crit/90 disabled:opacity-60"
+            disabled={deleting || confirmName !== deleteTarget?.name}
+            className="flex-1 rounded-lg bg-crit px-4 py-2.5 text-sm font-medium text-white hover:bg-crit/90 disabled:opacity-40"
           >
             {deleting ? 'Deleting…' : 'Delete permanently'}
           </button>

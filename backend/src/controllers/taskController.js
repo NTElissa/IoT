@@ -9,6 +9,7 @@ export const getTasks = async (req, res) => {
   const filter = { hospital: req.user.hospital };
   if (req.user.role === 'staff') filter.assignedTo = req.user._id;
   if (req.user.role === 'nurse' || req.user.role === 'doctor') filter.assignedBy = req.user._id;
+  if (req.user.role === 'patient') filter.patient = req.user.patient;
   const { status } = req.query;
   if (status) filter.status = status;
 

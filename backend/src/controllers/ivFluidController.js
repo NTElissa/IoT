@@ -1,6 +1,7 @@
 import IVFluid, { OPEN_STATUSES } from '../models/IVFluid.js';
 import Room from '../models/Room.js';
 import Patient from '../models/Patient.js';
+import Task from '../models/Task.js';
 import IVEventLog from '../models/IVEventLog.js';
 import { calculateFluidLevel, estimateEmptyTime } from '../services/ivCalculationService.js';
 import { broadcastIVUpdate } from '../services/notificationService.js';
@@ -30,6 +31,11 @@ export const getIVFluids = async (req, res) => {
     const roomField = req.user.role === 'doctor' ? 'assignedDoctors' : 'assignedNurses';
     const rooms = await Room.find({ hospital: req.user.hospital, [roomField]: req.user._id }).select('_id');
     filter.room = { $in: rooms.map((r) => r._id) };
+  } else if (req.user.role === 'staff') {
+    const tasks = await Task.find({ hospital: req.user.hospital, assignedTo: req.user._id }).select('patient');
+    filter.patient = { $in: tasks.map((t) => t.patient) };
+  } else if (req.user.role === 'patient') {
+    filter.patient = req.user.patient;
   }
   const { status } = req.query;
   if (status) filter.status = status;

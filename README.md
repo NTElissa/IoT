@@ -44,6 +44,10 @@ Super Admin
        └─ delegate bag-change tasks to Staff Members
      Staff Member
        └─ sees and completes only the tasks delegated to them
+     Patient (self-service portal, not hospital-staff)
+       ├─ signs in with a Patient ID instead of an email/password account
+       ├─ views their own room, care team, allergies, vitals, and IV status
+       └─ messages their care team in the shared per-patient chat
 ```
 
 Every hospital's data (users, rooms, patients, IV fluids, tasks, event
@@ -96,6 +100,7 @@ Admin:   admin@remerarukoma.rw / Admin@12345
 Doctor:  doctor1@remerarukoma.rw / Doctor@12345
 Nurse:   nurse1@remerarukoma.rw / Nurse@12345
 Staff:   staff1@remerarukoma.rw / Staff@12345
+Patient: Patient ID printed by the seed script / Patient@12345 (use the "Patient sign-in" tab on the Login page)
 --- Kibagabaga District Hospital (multi-tenancy demo) ---
 Admin:   admin@kibagabaga.rw / Admin@12345
 ```
@@ -139,7 +144,43 @@ Then open http://localhost:4173.
 
 ---
 
-## 4. Sign-in, security, and dark mode
+## 4. Patient portal, care-team chat, and clinical safety features
+
+- **Patients can use the system themselves.** Registering a patient
+  auto-generates a globally-unique Patient ID (`patientCode`, e.g.
+  `P-7K2M9X`). A doctor, nurse, or admin can then grant that patient a
+  portal login (Patients page → key icon) by setting a password - the
+  patient signs in via a dedicated "Patient sign-in" tab on the Login page
+  using their Patient ID instead of an email. Their portal (`/portal`)
+  shows their own room/care-team info, allergies, latest vitals, current
+  IV fluid status, and lets them message their care team - nothing else.
+  Access can be revoked at any time without deleting the underlying
+  patient record.
+- **Care-team chat.** One running conversation per patient. The assigned
+  doctor, assigned nurse, any staff member currently delegated a task for
+  that patient, and the patient themselves (if portal access is enabled)
+  can all read and post - scoped precisely, not hospital-wide, and pushed
+  live over the same Socket.IO connection as everything else.
+- **Vitals tracking.** Doctors/nurses log temperature, heart rate,
+  respiratory rate, blood pressure, and oxygen saturation readings from a
+  patient's History view; the trend (not just the latest number) is what
+  actually helps catch deterioration early, so it's charted over time
+  rather than just displayed as a single value.
+- **Allergies.** A dedicated field on every patient record, surfaced as a
+  prominent warning banner everywhere that patient's chart is opened -
+  exactly where it matters before administering a new IV fluid or
+  medication.
+- **Hospitals are disabled, not casually deleted.** A Super Admin's normal
+  tool is "Disable hospital" (blocks every login tied to it without
+  touching its data). Permanent deletion is only reachable once a hospital
+  is already disabled, and requires typing its exact name to confirm -
+  both enforced server-side, not just hidden in the UI.
+- **A scoping gap I found and fixed while building this:** `staff` (and now
+  `patient`) accounts could previously see every IV fluid, alert, and task
+  in the whole hospital through those list endpoints, not just the ones
+  relevant to them. Now properly scoped to their own assignments/tasks.
+
+## 5. Sign-in, security, and dark mode
 
 - **Dark mode.** A toggle (sun/moon icon) is available on every page,
   including pre-login. Implemented via CSS variables behind Tailwind's
@@ -175,7 +216,7 @@ Then open http://localhost:4173.
   admins see their own hospital's history; the Super Admin sees
   platform-wide activity - both from the Security page.
 
-## 5. Key behaviors implemented
+## 6. Key behaviors implemented
 
 - **Room-scoped nurse picker.** When a doctor registers or edits a patient
   and picks a room, the "Assigned nurse" list narrows to the nurses
@@ -252,7 +293,7 @@ Then open http://localhost:4173.
 
 ---
 
-## 6. How the workflow maps to the research
+## 7. How the workflow maps to the research
 
 | Research concept | Implementation |
 |---|---|
@@ -266,7 +307,7 @@ Then open http://localhost:4173.
 
 ---
 
-## 7. API overview
+## 8. API overview
 
 All endpoints are namespaced under `/api/v1` and return
 `{ success, message, data, timestamp }` (or `{ success: false, message,
@@ -274,14 +315,17 @@ error, data, timestamp }` on failure — `data` may carry extra context, e.g.
 the existing bag on a 409 IV-fluid conflict).
 
 ```
-/auth          register (bootstrap Super Admin only, one-time) · login · google · me · logout
+/auth          register (bootstrap Super Admin only, one-time) · login · patient-login · google · me · logout
 /auth/webauthn register-options/register-verify (add a passkey, requires login) · credentials (list/delete)
                login-options/login-verify (sign in with an existing passkey, public)
 /auth/2fa      setup/confirm/disable (requires login) · verify-login (public, second step of login)
-/hospitals     Super Admin only: create hospital+admin, list, update (suspend), delete (cascades)
+/hospitals     Super Admin only: create hospital+admin, list, update (disable) · delete (disabled hospitals only, requires confirmName match, cascades)
 /users         Admin only, hospital-scoped: create, update, change role, reset password, permanent delete
 /patients      register/list/update patients (admin or doctor, room changes by admin or assigned doctor/nurse)
                GET /:id/history (IV fluids, tasks, event log, notes) · GET/POST /:id/notes (comments & medications)
+               POST/DELETE /:id/portal-access (grant/revoke a patient's own login)
+               GET/POST /:id/messages · PATCH /:id/messages/read (care-team ↔ patient chat)
+               GET/POST /:id/vitals (doctor/nurse log readings; patient can view their own)
 /rooms         create rooms, assign doctors/nurses/staff (assign-staff accepts doctorIds/nurseIds/staffIds)
 /iv-fluids     start (409 + force flow on conflict) · toggle-active · change-bag · remove · DELETE (admin) · acknowledge alerts · complications
 /tasks         delegate (to any hospital staff member), start, complete, escalate tasks
@@ -293,7 +337,7 @@ the existing bag on a 409 IV-fluid conflict).
 
 ---
 
-## 8. Environment variables
+## 9. Environment variables
 
 See `backend/.env.example` and `frontend/.env.example` for the full list:
 ports, Mongo URI, JWT secret, alert thresholds, escalation window,
@@ -302,7 +346,7 @@ URLs.
 
 ---
 
-## 9. Suggested future enhancements
+## 10. Suggested future enhancements
 
 DripWatch covers the core IV-monitoring workflow end-to-end, but a
 production hospital system tends to grow toward things intentionally left

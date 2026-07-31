@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Users } from 'lucide-react';
+import { Plus, Users, MessageSquare, KeyRound } from 'lucide-react';
 import AppLayout from '../components/common/AppLayout.jsx';
 import Modal from '../components/common/Modal.jsx';
 import SearchInput from '../components/common/SearchInput.jsx';
 import PatientHistoryModal from '../components/patients/PatientHistoryModal.jsx';
+import ChatModal from '../components/patients/ChatModal.jsx';
+import PortalAccessModal from '../components/patients/PortalAccessModal.jsx';
 import { Card, EmptyState, ErrorState, Spinner } from '../components/common/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import * as patientService from '../services/patientService.js';
@@ -17,6 +19,7 @@ const emptyForm = {
   gender: 'F',
   contact: '',
   medicalHistory: '',
+  allergies: '',
   room: '',
   bed: '',
   assignedDoctor: '',
@@ -35,6 +38,8 @@ const PatientsPage = () => {
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
   const [historyTarget, setHistoryTarget] = useState(null);
+  const [chatTarget, setChatTarget] = useState(null);
+  const [portalTarget, setPortalTarget] = useState(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
   const [search, setSearch] = useState('');
@@ -98,6 +103,7 @@ const PatientsPage = () => {
       gender: patient.gender,
       contact: patient.contact || '',
       medicalHistory: patient.medicalHistory || '',
+      allergies: (patient.allergies || []).join(', '),
       room: patient.room?._id || '',
       bed: patient.bed || '',
       assignedDoctor: patient.assignedDoctor?._id || '',
@@ -112,11 +118,18 @@ const PatientsPage = () => {
     e.preventDefault();
     setSaving(true);
     setFormError('');
+    const payload = {
+      ...form,
+      allergies: form.allergies
+        .split(',')
+        .map((a) => a.trim())
+        .filter(Boolean),
+    };
     try {
       if (editingId) {
-        await patientService.updatePatient(editingId, form);
+        await patientService.updatePatient(editingId, payload);
       } else {
-        await patientService.createPatient(form);
+        await patientService.createPatient(payload);
       }
       setModalOpen(false);
       load();
@@ -180,7 +193,17 @@ const PatientsPage = () => {
             <tbody>
               {filteredPatients.map((p) => (
                 <tr key={p._id} className="border-b border-border/5 last:border-0">
-                  <td className="px-4 py-3 font-medium text-ink">{p.name}</td>
+                  <td className="px-4 py-3 font-medium text-ink">
+                    {p.name}
+                    {p.allergies?.length > 0 && (
+                      <span
+                        title={`Allergies: ${p.allergies.join(', ')}`}
+                        className="ml-2 rounded-full bg-crit/10 px-1.5 py-0.5 text-[10px] font-semibold text-crit"
+                      >
+                        Allergy
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-ink/60">{p.gender}</td>
                   <td className="px-4 py-3 text-ink/60">
                     {p.room?.roomNumber || '—'} {p.bed && `/ ${p.bed}`}
@@ -199,6 +222,22 @@ const PatientsPage = () => {
                   <td className="px-4 py-3 text-ink/50">{formatDateTime(p.admittedAt)}</td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-3">
+                      <button
+                        onClick={() => setChatTarget(p)}
+                        title="Chat"
+                        className="text-ink/40 hover:text-teal-600"
+                      >
+                        <MessageSquare size={15} />
+                      </button>
+                      {canEdit && (
+                        <button
+                          onClick={() => setPortalTarget(p)}
+                          title="Patient portal access"
+                          className="text-ink/40 hover:text-teal-600"
+                        >
+                          <KeyRound size={15} />
+                        </button>
+                      )}
                       <button
                         onClick={() => setHistoryTarget(p)}
                         className="text-xs font-medium text-teal-600 hover:underline"
@@ -267,6 +306,16 @@ const PatientsPage = () => {
               onChange={(e) => setForm({ ...form, medicalHistory: e.target.value })}
               className="w-full rounded-lg border border-border/10 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
             />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="mb-1.5 block text-sm font-medium text-ink/70">Known allergies</label>
+            <input
+              value={form.allergies}
+              onChange={(e) => setForm({ ...form, allergies: e.target.value })}
+              placeholder="Penicillin, Latex, Peanuts…"
+              className="w-full rounded-lg border border-border/10 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
+            />
+            <p className="mt-1 text-xs text-ink/40">Comma-separated - shown as a warning wherever this patient's chart is viewed.</p>
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium text-ink/70">
@@ -354,6 +403,14 @@ const PatientsPage = () => {
       </Modal>
 
       <PatientHistoryModal patient={historyTarget} onClose={() => setHistoryTarget(null)} />
+      <ChatModal patient={chatTarget} onClose={() => setChatTarget(null)} />
+      <PortalAccessModal
+        patient={portalTarget}
+        onClose={() => setPortalTarget(null)}
+        onChanged={() => {
+          load();
+        }}
+      />
     </AppLayout>
   );
 };

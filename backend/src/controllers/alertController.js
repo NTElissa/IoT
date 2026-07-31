@@ -1,5 +1,6 @@
 import IVFluid from '../models/IVFluid.js';
 import Room from '../models/Room.js';
+import Task from '../models/Task.js';
 import { success } from '../utils/apiResponse.js';
 
 export const getAlerts = async (req, res) => {
@@ -8,6 +9,11 @@ export const getAlerts = async (req, res) => {
     const roomField = req.user.role === 'doctor' ? 'assignedDoctors' : 'assignedNurses';
     const rooms = await Room.find({ hospital: req.user.hospital, [roomField]: req.user._id }).select('_id');
     roomFilter.room = { $in: rooms.map((r) => r._id) };
+  } else if (req.user.role === 'staff') {
+    const tasks = await Task.find({ hospital: req.user.hospital, assignedTo: req.user._id }).select('patient');
+    roomFilter.patient = { $in: tasks.map((t) => t.patient) };
+  } else if (req.user.role === 'patient') {
+    roomFilter.patient = req.user.patient;
   }
 
   const bags = await IVFluid.find({ ...roomFilter, 'alerts.0': { $exists: true } })

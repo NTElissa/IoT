@@ -1,19 +1,45 @@
 import React, { useEffect, useState } from 'react';
-import { Droplet, ClipboardList, ScrollText, MessageSquarePlus, Pill } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { Droplet, ClipboardList, ScrollText, MessageSquarePlus, Pill, HeartPulse } from 'lucide-react';
 import Modal from '../common/Modal.jsx';
 import { Spinner, ErrorState } from '../common/ui.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 import * as patientService from '../../services/patientService.js';
+import * as vitalsService from '../../services/vitalsService.js';
 import { formatDateTime } from '../../utils/helpers.js';
 
 const emptyNoteForm = { type: 'comment', text: '', drugName: '', dosage: '', frequency: '', instructions: '' };
+const emptyVitalForm = {
+  temperatureC: '',
+  heartRate: '',
+  respiratoryRate: '',
+  bloodPressureSystolic: '',
+  bloodPressureDiastolic: '',
+  oxygenSaturation: '',
+  notes: '',
+};
 
 const PatientHistoryModal = ({ patient, onClose }) => {
+  const { user } = useAuth();
   const [history, setHistory] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [noteForm, setNoteForm] = useState(emptyNoteForm);
   const [savingNote, setSavingNote] = useState(false);
   const [noteError, setNoteError] = useState('');
+  const [vitals, setVitals] = useState([]);
+  const [vitalForm, setVitalForm] = useState(emptyVitalForm);
+  const [savingVital, setSavingVital] = useState(false);
+  const [vitalError, setVitalError] = useState('');
+  const canLogVitals = user.role === 'admin' || user.role === 'doctor' || user.role === 'nurse';
+
+  useEffect(() => {
+    if (!patient) return;
+    vitalsService
+      .getVitals(patient._id)
+      .then(setVitals)
+      .catch(() => {});
+  }, [patient?._id]);
 
   useEffect(() => {
     if (!patient) return;
@@ -43,13 +69,123 @@ const PatientHistoryModal = ({ patient, onClose }) => {
     }
   };
 
+  const handleAddVital = async (e) => {
+    e.preventDefault();
+    setSavingVital(true);
+    setVitalError('');
+    try {
+      const payload = Object.fromEntries(
+        Object.entries(vitalForm).map(([k, v]) => [k, k === 'notes' ? v : v === '' ? undefined : Number(v)])
+      );
+      const vital = await vitalsService.createVital(patient._id, payload);
+      setVitals((prev) => [vital, ...prev]);
+      setVitalForm(emptyVitalForm);
+    } catch (err) {
+      setVitalError(err.message);
+    } finally {
+      setSavingVital(false);
+    }
+  };
+
+  const chartData = [...vitals]
+    .reverse()
+    .map((v) => ({ time: formatDateTime(v.createdAt), temp: v.temperatureC, hr: v.heartRate }));
+
   return (
     <Modal open={!!patient} onClose={onClose} title={`History · ${patient.name}`} wide>
       {loading && <Spinner />}
       {error && <ErrorState message={error} />}
 
+      {patient.allergies?.length > 0 && (
+        <div className="mb-4 rounded-lg bg-crit/10 px-3 py-2.5 text-sm text-crit">
+          <span className="font-medium">Known allergies: </span>
+          {patient.allergies.join(', ')}
+        </div>
+      )}
+
       {history && (
         <div className="space-y-6">
+          <div>
+            <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-ink">
+              <HeartPulse size={15} /> Vitals
+            </h3>
+
+            {canLogVitals && (
+              <form onSubmit={handleAddVital} className="mb-3 space-y-2 rounded-lg border border-border/10 p-3">
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={vitalForm.temperatureC}
+                    onChange={(e) => setVitalForm({ ...vitalForm, temperatureC: e.target.value })}
+                    placeholder="Temp °C"
+                    className="col-span-1 rounded-lg border border-border/10 px-2 py-1.5 text-xs outline-none focus:border-teal-500"
+                  />
+                  <input
+                    type="number"
+                    value={vitalForm.heartRate}
+                    onChange={(e) => setVitalForm({ ...vitalForm, heartRate: e.target.value })}
+                    placeholder="HR bpm"
+                    className="col-span-1 rounded-lg border border-border/10 px-2 py-1.5 text-xs outline-none focus:border-teal-500"
+                  />
+                  <input
+                    type="number"
+                    value={vitalForm.respiratoryRate}
+                    onChange={(e) => setVitalForm({ ...vitalForm, respiratoryRate: e.target.value })}
+                    placeholder="Resp/min"
+                    className="col-span-1 rounded-lg border border-border/10 px-2 py-1.5 text-xs outline-none focus:border-teal-500"
+                  />
+                  <input
+                    type="number"
+                    value={vitalForm.bloodPressureSystolic}
+                    onChange={(e) => setVitalForm({ ...vitalForm, bloodPressureSystolic: e.target.value })}
+                    placeholder="BP sys"
+                    className="col-span-1 rounded-lg border border-border/10 px-2 py-1.5 text-xs outline-none focus:border-teal-500"
+                  />
+                  <input
+                    type="number"
+                    value={vitalForm.bloodPressureDiastolic}
+                    onChange={(e) => setVitalForm({ ...vitalForm, bloodPressureDiastolic: e.target.value })}
+                    placeholder="BP dia"
+                    className="col-span-1 rounded-lg border border-border/10 px-2 py-1.5 text-xs outline-none focus:border-teal-500"
+                  />
+                  <input
+                    type="number"
+                    value={vitalForm.oxygenSaturation}
+                    onChange={(e) => setVitalForm({ ...vitalForm, oxygenSaturation: e.target.value })}
+                    placeholder="O₂ %"
+                    className="col-span-1 rounded-lg border border-border/10 px-2 py-1.5 text-xs outline-none focus:border-teal-500"
+                  />
+                </div>
+                {vitalError && <p className="rounded-lg bg-crit/5 px-2 py-1.5 text-xs text-crit">{vitalError}</p>}
+                <button
+                  type="submit"
+                  disabled={savingVital}
+                  className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700 disabled:opacity-60"
+                >
+                  {savingVital ? 'Saving…' : 'Log vitals'}
+                </button>
+              </form>
+            )}
+
+            {chartData.length > 1 && (
+              <div className="mb-3 h-40">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--color-border) / 0.1)" />
+                    <XAxis dataKey="time" tick={{ fontSize: 9 }} hide />
+                    <YAxis tick={{ fontSize: 10 }} width={28} />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="temp" stroke="#E8A33D" dot={false} name="Temp °C" />
+                    <Line type="monotone" dataKey="hr" stroke="#2B7A9B" dot={false} name="Heart rate" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {!vitals.length && <p className="text-sm text-ink/40">No vitals recorded yet.</p>}
+          </div>
+
           <div>
             <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-ink">
               <MessageSquarePlus size={15} /> Comments & medications

@@ -50,6 +50,10 @@ export const broadcastTaskUpdate = (task, targetUserIds, hospitalId) => {
   emitScoped('task-update', task, targetUserIds, hospitalId);
 };
 
+export const broadcastChatMessage = (message, targetUserIds, hospitalId) => {
+  emitScoped('chat-message', message, targetUserIds, hospitalId);
+};
+
 export default {
   attachIO,
   notifyDashboard,
@@ -58,4 +62,5 @@ export default {
   broadcastAlert,
   broadcastIVUpdate,
   broadcastTaskUpdate,
+  broadcastChatMessage,
 };

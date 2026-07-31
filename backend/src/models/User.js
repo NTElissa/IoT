@@ -20,10 +20,13 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true, minlength: 6, select: false },
     role: {
       type: String,
-      enum: ['super_admin', 'admin', 'doctor', 'nurse', 'staff'],
+      enum: ['super_admin', 'admin', 'doctor', 'nurse', 'staff', 'patient'],
       required: true,
       default: 'nurse',
     },
+    // Only set for role: 'patient' - links their portal login back to
+    // their clinical record.
+    patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', default: null },
     // Every role except super_admin belongs to exactly one hospital.
     // super_admin has hospital: null and operates above all hospitals.
     hospital: { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital', default: null },

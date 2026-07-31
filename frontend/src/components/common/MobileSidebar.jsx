@@ -11,6 +11,7 @@ import {
   BarChart3,
   UserCog,
   Building2,
+  HeartPulse,
 } from 'lucide-react';
 
 const linksByRole = {
@@ -42,6 +43,7 @@ const linksByRole = {
     { to: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
     { to: '/tasks', label: 'My Tasks', icon: ClipboardList },
   ],
+  patient: [{ to: '/portal', label: 'My Care', icon: HeartPulse }],
 };
 
 const MobileSidebar = ({ open, onClose }) => {

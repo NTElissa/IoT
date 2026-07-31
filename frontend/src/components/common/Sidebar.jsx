@@ -10,6 +10,7 @@ import {
   UserCog,
   Droplets,
   Building2,
+  HeartPulse,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 
@@ -42,6 +43,7 @@ const linksByRole = {
     { to: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
     { to: '/tasks', label: 'My Tasks', icon: ClipboardList },
   ],
+  patient: [{ to: '/portal', label: 'My Care', icon: HeartPulse }],
 };
 
 const Sidebar = () => {

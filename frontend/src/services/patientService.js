@@ -8,6 +8,8 @@ export const createPatientNote = (id, payload) => unwrap(api.post(`/patients/${i
 export const createPatient = (payload) => unwrap(api.post('/patients', payload));
 export const updatePatient = (id, payload) => unwrap(api.put(`/patients/${id}`, payload));
 export const deletePatient = (id) => unwrap(api.delete(`/patients/${id}`));
+export const enablePortalAccess = (id, password) => unwrap(api.post(`/patients/${id}/portal-access`, { password }));
+export const disablePortalAccess = (id) => unwrap(api.delete(`/patients/${id}/portal-access`));
 
 export default {
   getPatients,
@@ -18,4 +20,6 @@ export default {
   createPatient,
   updatePatient,
   deletePatient,
+  enablePortalAccess,
+  disablePortalAccess,
 };

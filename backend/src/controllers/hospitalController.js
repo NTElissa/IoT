@@ -86,6 +86,24 @@ export const updateHospital = async (req, res) => {
 export const deleteHospital = async (req, res) => {
   const hospital = await Hospital.findById(req.params.id);
   if (!hospital) return failure(res, { message: 'Hospital not found', status: 404 });
+
+  // Deleting is destructive and irreversible - a hospital record normally
+  // just needs to be disabled (see updateHospital), so this requires two
+  // deliberate steps: the hospital must already be disabled, and the caller
+  // must type its exact name to confirm.
+  if (hospital.isActive) {
+    return failure(res, {
+      message: 'Disable this hospital first before permanently deleting it.',
+      status: 400,
+    });
+  }
+  if (req.body.confirmName !== hospital.name) {
+    return failure(res, {
+      message: 'Type the hospital\u2019s exact name to confirm permanent deletion.',
+      status: 400,
+    });
+  }
+
   const hospitalId = hospital._id;
   await Promise.all([
     User.deleteMany({ hospital: hospitalId }),

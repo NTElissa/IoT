@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import Hospital from '../models/Hospital.js';
+import Patient from '../models/Patient.js';
 import generateToken, { generatePendingTwoFactorToken } from '../utils/generateToken.js';
 import { recordLoginEvent } from '../services/loginAudit.js';
 import env from '../config/env.js';
@@ -123,6 +124,55 @@ export const login = async (req, res) => {
   return completeLogin(req, res, user, 'password');
 };
 
+// Patients sign in with their patientCode instead of an email, but go
+// through the exact same lockout/2FA/audit-logging path as everyone else -
+// their portal account is a regular User document underneath.
+export const patientLogin = async (req, res) => {
+  const { patientCode, password } = req.body;
+  if (!patientCode || !password) {
+    return failure(res, { message: 'Patient ID and password are required', status: 400 });
+  }
+
+  const patient = await Patient.findOne({ patientCode: patientCode.toUpperCase().trim() });
+  if (!patient || !patient.portalEnabled || !patient.portalUser) {
+    await recordLoginEvent(req, { email: patientCode, success: false, method: 'password', reason: 'no_such_account' });
+    return failure(res, { message: 'Invalid patient ID or password', status: 401 });
+  }
+
+  const user = await User.findById(patient.portalUser).select('+password');
+  if (!user || !user.isActive) {
+    await recordLoginEvent(req, { email: patientCode, success: false, method: 'password', reason: 'no_such_account' });
+    return failure(res, { message: 'Invalid patient ID or password', status: 401 });
+  }
+
+  if (user.isLocked()) {
+    await recordLoginEvent(req, { user, success: false, method: 'password', reason: 'account_locked' });
+    const minutesLeft = Math.ceil((user.lockUntil - Date.now()) / 60000);
+    return failure(res, {
+      message: `Too many failed attempts. Try again in ${minutesLeft} minute${minutesLeft === 1 ? '' : 's'}.`,
+      status: 423,
+    });
+  }
+
+  const match = await user.comparePassword(password);
+  if (!match) {
+    user.failedLoginAttempts += 1;
+    if (user.failedLoginAttempts >= env.maxLoginAttempts) {
+      user.lockUntil = new Date(Date.now() + env.lockMinutes * 60 * 1000);
+    }
+    await user.save();
+    await recordLoginEvent(req, {
+      user,
+      success: false,
+      method: 'password',
+      reason: user.lockUntil ? 'account_locked' : 'invalid_password',
+    });
+    return failure(res, { message: 'Invalid patient ID or password', status: 401 });
+  }
+
+  return completeLogin(req, res, user, 'password');
+};
+
 export const me = async (req, res) => {
   return success(res, { data: { user: req.user.toSafeObject() } });
 };
@@ -131,4 +181,4 @@ export const logout = async (req, res) => {
   return success(res, { message: 'Logged out' });
 };
 
-export default { register, login, me, logout, completeLogin, checkHospitalActive };
+export default { register, login, patientLogin, me, logout, completeLogin, checkHospitalActive };

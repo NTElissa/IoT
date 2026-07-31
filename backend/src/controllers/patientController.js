@@ -4,6 +4,8 @@ import IVFluid from '../models/IVFluid.js';
 import Task from '../models/Task.js';
 import IVEventLog from '../models/IVEventLog.js';
 import PatientNote from '../models/PatientNote.js';
+import User from '../models/User.js';
+import generateUniquePatientCode from '../utils/patientCode.js';
 import { success, failure } from '../utils/apiResponse.js';
 
 const canAccessPatient = (user, patient) => {
@@ -13,10 +15,20 @@ const canAccessPatient = (user, patient) => {
   return false;
 };
 
+// Includes the patient's own portal account, read-only, for viewing their
+// own record - used only by getPatient, never by write operations.
+const canViewPatient = (user, patient) => {
+  if (canAccessPatient(user, patient)) return true;
+  if (user.role === 'patient') return patient.portalUser?.toString() === user._id.toString();
+  return false;
+};
+
 export const getPatients = async (req, res) => {
   const filter = { hospital: req.user.hospital };
   if (req.user.role === 'doctor') filter.assignedDoctor = req.user._id;
   if (req.user.role === 'nurse') filter.assignedNurse = req.user._id;
+  if (req.user.role === 'patient') filter._id = req.user.patient;
+  if (req.user.role === 'staff') filter._id = null; // staff use tasks, not the patient list
 
   const patients = await Patient.find(filter)
     .populate('room', 'roomNumber ward')
@@ -32,7 +44,7 @@ export const getPatient = async (req, res) => {
     .populate('assignedDoctor', 'name email phone')
     .populate('assignedNurse', 'name email phone');
   if (!patient) return failure(res, { message: 'Patient not found', status: 404 });
-  if (!canAccessPatient(req.user, patient)) {
+  if (!canViewPatient(req.user, patient)) {
     return failure(res, { message: 'Not authorized to view this patient', status: 403 });
   }
   return success(res, { data: patient });
@@ -46,7 +58,7 @@ export const getPatient = async (req, res) => {
 // assignedNurse should be one of the nurses already assigned to the chosen
 // room (the frontend limits the picker to that list).
 export const createPatient = async (req, res) => {
-  const { name, dateOfBirth, gender, contact, medicalHistory, room, bed, assignedDoctor, assignedNurse } =
+  const { name, dateOfBirth, gender, contact, medicalHistory, allergies, room, bed, assignedDoctor, assignedNurse } =
     req.body;
   if (!name || !gender) {
     return failure(res, { message: 'Name and gender are required', status: 400 });
@@ -60,6 +72,7 @@ export const createPatient = async (req, res) => {
 
   const isDoctor = req.user.role === 'doctor';
   const finalAssignedDoctor = isDoctor ? req.user._id : assignedDoctor;
+  const patientCode = await generateUniquePatientCode();
 
   const patient = await Patient.create({
     hospital: req.user.hospital,
@@ -68,11 +81,13 @@ export const createPatient = async (req, res) => {
     gender,
     contact,
     medicalHistory,
+    allergies: Array.isArray(allergies) ? allergies.filter(Boolean) : [],
     room,
     bed,
     assignedDoctor: finalAssignedDoctor,
     assignedNurse,
     createdBy: req.user._id,
+    patientCode,
   });
 
   if (isDoctor && roomDoc && !roomDoc.assignedDoctors.some((id) => id.toString() === req.user._id.toString())) {
@@ -87,7 +102,7 @@ export const updatePatient = async (req, res) => {
   const patient = await Patient.findOne({ _id: req.params.id, hospital: req.user.hospital });
   if (!patient) return failure(res, { message: 'Patient not found', status: 404 });
 
-  const { name, contact, medicalHistory, room, bed, assignedDoctor, assignedNurse, status } = req.body;
+  const { name, contact, medicalHistory, allergies, room, bed, assignedDoctor, assignedNurse, status } = req.body;
   const isAdmin = req.user.role === 'admin';
   const isAssignedCarer = canAccessPatient(req.user, patient);
 
@@ -147,6 +162,7 @@ export const updatePatient = async (req, res) => {
   if (name !== undefined) patient.name = name;
   if (contact !== undefined) patient.contact = contact;
   if (medicalHistory !== undefined) patient.medicalHistory = medicalHistory;
+  if (allergies !== undefined) patient.allergies = Array.isArray(allergies) ? allergies.filter(Boolean) : [];
 
   await patient.save();
   return success(res, { message: 'Patient updated', data: patient });
@@ -240,6 +256,65 @@ export const createPatientNote = async (req, res) => {
   return success(res, { message: 'Note added', data: populated, status: 201 });
 };
 
+// Creates (or resets the password on) a portal login for this patient, so
+// they can sign in themselves using their patientCode + this password.
+// Only the admin or the patient's assigned doctor/nurse may do this - it's
+// effectively handing out access to the patient's own chart and chat.
+export const enablePortalAccess = async (req, res) => {
+  const patient = await Patient.findOne({ _id: req.params.id, hospital: req.user.hospital });
+  if (!patient) return failure(res, { message: 'Patient not found', status: 404 });
+  if (!canAccessPatient(req.user, patient)) {
+    return failure(res, { message: 'Not authorized to manage portal access for this patient', status: 403 });
+  }
+
+  const { password } = req.body;
+  if (!password || password.length < 6) {
+    return failure(res, { message: 'Password must be at least 6 characters', status: 400 });
+  }
+
+  let portalUser;
+  if (patient.portalUser) {
+    portalUser = await User.findById(patient.portalUser).select('+password');
+    portalUser.password = password;
+    portalUser.isActive = true;
+    await portalUser.save();
+  } else {
+    portalUser = await User.create({
+      name: patient.name,
+      email: `${patient.patientCode.toLowerCase()}@patient.dripwatch.local`,
+      password,
+      role: 'patient',
+      hospital: req.user.hospital,
+      patient: patient._id,
+      createdBy: req.user._id,
+    });
+    patient.portalUser = portalUser._id;
+  }
+  patient.portalEnabled = true;
+  await patient.save();
+
+  return success(res, {
+    message: 'Portal access enabled',
+    data: { patientCode: patient.patientCode, portalEnabled: true },
+  });
+};
+
+export const disablePortalAccess = async (req, res) => {
+  const patient = await Patient.findOne({ _id: req.params.id, hospital: req.user.hospital });
+  if (!patient) return failure(res, { message: 'Patient not found', status: 404 });
+  if (!canAccessPatient(req.user, patient)) {
+    return failure(res, { message: 'Not authorized to manage portal access for this patient', status: 403 });
+  }
+
+  if (patient.portalUser) {
+    await User.findByIdAndUpdate(patient.portalUser, { isActive: false });
+  }
+  patient.portalEnabled = false;
+  await patient.save();
+
+  return success(res, { message: 'Portal access disabled' });
+};
+
 export default {
   getPatients,
   getPatient,
@@ -249,4 +324,6 @@ export default {
   getPatientHistory,
   getPatientNotes,
   createPatientNote,
+  enablePortalAccess,
+  disablePortalAccess,
 };
